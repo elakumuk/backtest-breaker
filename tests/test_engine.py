@@ -66,7 +66,7 @@ def test_costs():
     returns, rf = _inputs()
     free = run_backtest(_spec(cost_bps=0), returns, rf)
     charged = run_backtest(_spec(cost_bps=50), returns, rf)
-    np.testing.assert_allclose(free.daily_returns - charged.daily_returns, 0.005 * free.turnover)
+    np.testing.assert_allclose(free.daily_returns - charged.daily_returns, 0.005 * free.turnover, atol=1e-15)
 
 
 def test_long_short_neutral():
@@ -90,3 +90,26 @@ def test_spec_json_roundtrip():
     """Specs round trip through JSON and reject invalid date ordering."""
     spec = _spec()
     assert StrategySpec.from_json(spec.to_json()) == spec
+
+
+def test_warmup_history_invests_on_first_evaluation_day():
+    """Pre-start observations warm up signals without being part of results."""
+    returns, rf = _inputs(n_days=900)
+    spec = _spec(start=date(2001, 1, 2), end=date(2001, 5, 1), lookback_days=20, skip_days=0, rebalance="D")
+    result = run_backtest(spec, returns, rf)
+    assert result.weights.index.min() >= pd.Timestamp(spec.start)
+    assert result.weights.iloc[0].sum() == 1.0
+
+
+def test_data_after_spec_end_does_not_change_results():
+    """The engine truncates source observations at the requested end date."""
+    returns, rf = _inputs(n_days=400)
+    spec = _spec(end=date(2001, 2, 1))
+    baseline = run_backtest(spec, returns, rf)
+    extended = returns.copy()
+    after = extended.index > pd.Timestamp(spec.end)
+    extended.loc[after] = 0.7
+    changed = run_backtest(spec, extended, rf)
+    for field in ("daily_returns", "gross_returns", "turnover", "costs"):
+        pd.testing.assert_series_equal(getattr(baseline, field), getattr(changed, field))
+    pd.testing.assert_frame_equal(baseline.weights, changed.weights)

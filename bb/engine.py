@@ -29,7 +29,8 @@ def _signal_matrix(returns: pd.DataFrame, spec: StrategySpec) -> pd.DataFrame:
     if spec.signal_type == "low_vol":
         score = -source.rolling(spec.lookback_days, min_periods=spec.lookback_days).std(ddof=0)
     else:
-        cumulative = (1 + source).rolling(spec.lookback_days, min_periods=spec.lookback_days).apply(np.prod, raw=True) - 1
+        log_returns = np.log1p(source.where(source >= -1.0))
+        cumulative = np.expm1(log_returns.rolling(spec.lookback_days, min_periods=spec.lookback_days).sum())
         if spec.signal_type == "reversal":
             score = -cumulative
         elif spec.signal_type == "trend":
@@ -80,28 +81,52 @@ def run_backtest(spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) -> Ba
     del rf
     if not isinstance(returns.index, pd.DatetimeIndex):
         raise TypeError("returns must have a DatetimeIndex")
-    returns = returns.sort_index().loc[spec.start : spec.end].astype(float)
-    returns = returns.loc[~returns.index.duplicated(keep="first")]
-    scores = _signal_matrix(returns, spec)
-    rebalance = _rebalance_mask(returns.index, spec.rebalance)
-    weights = pd.DataFrame(0.0, index=returns.index, columns=returns.columns)
-    turnover = pd.Series(0.0, index=returns.index, name="turnover")
-    costs = pd.Series(0.0, index=returns.index, name="costs")
-    previous = pd.Series(0.0, index=returns.columns)
-
-    for pos, day in enumerate(returns.index):
+    if not isinstance(returns.index, pd.DatetimeIndex):
+        raise TypeError("returns must have a DatetimeIndex")
+    history = returns.sort_index().loc[: spec.end].astype(float)
+    history = history.loc[~history.index.duplicated(keep="first")]
+    scores = _signal_matrix(history, spec)
+    evaluation = history.loc[spec.start : spec.end]
+    if evaluation.empty:
+        raise ValueError("no returns fall inside the strategy evaluation dates")
+    scores = scores.loc[evaluation.index].to_numpy(dtype=float)
+    asset_returns = evaluation.to_numpy(dtype=float)
+    index = evaluation.index
+    rebalance = _rebalance_mask(index, spec.rebalance)
+    rebalance[0] = True
+    rows, columns = asset_returns.shape
+    weight_values = np.zeros((rows, columns), dtype=float)
+    turnover_values = np.zeros(rows, dtype=float)
+    costs_values = np.zeros(rows, dtype=float)
+    previous = np.zeros(columns, dtype=float)
+    for pos in range(rows):
         if pos:
-            prior_returns = returns.iloc[pos - 1].fillna(0.0)
-            portfolio_growth = 1.0 + float((previous * prior_returns).sum())
-            if abs(portfolio_growth) > 1e-12:
-                previous = previous * (1.0 + prior_returns) / portfolio_growth
+            prior_returns = np.nan_to_num(asset_returns[pos - 1], nan=0.0)
+            growth = 1.0 + np.dot(previous, prior_returns)
+            if abs(growth) > 1e-12:
+                previous = previous * (1.0 + prior_returns) / growth
         if rebalance[pos]:
-            target = _target_weights(scores.loc[day], spec)
-            turnover.loc[day] = float((target - previous).abs().sum())
-            costs.loc[day] = spec.cost_bps / 10_000.0 * turnover.loc[day]
+            eligible = np.flatnonzero(np.isfinite(scores[pos]))
+            target = np.zeros(columns, dtype=float)
+            n = min(spec.top_n, len(eligible))
+            if spec.long_short:
+                n = min(n, len(eligible) // 2)
+            if n:
+                order = eligible[np.argsort(scores[pos, eligible], kind="stable")]
+                if spec.long_short:
+                    target[order[-n:]] = 1.0 / n
+                    target[order[:n]] = -1.0 / n
+                else:
+                    target[order[-n:]] = 1.0 / n
+            turnover_values[pos] = np.abs(target - previous).sum()
+            costs_values[pos] = spec.cost_bps / 10_000.0 * turnover_values[pos]
             previous = target
-        weights.loc[day] = previous
+        weight_values[pos] = previous
 
+    weights = pd.DataFrame(weight_values, index=index, columns=evaluation.columns)
+    turnover = pd.Series(turnover_values, index=index, name="turnover")
+    costs = pd.Series(costs_values, index=index, name="costs")
+    returns = evaluation
     gross = (weights * returns.fillna(0.0)).sum(axis=1).rename("gross_returns")
     net = (gross - costs).rename("daily_returns")
     return BacktestResult(net, gross, weights, turnover, costs)
