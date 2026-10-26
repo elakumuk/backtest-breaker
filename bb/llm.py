@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -60,10 +61,43 @@ def _openai_response_format(schema: dict[str, Any]) -> dict[str, Any]:
     return {"type": "json_schema", "json_schema": {"name": "output", "schema": schema, "strict": True}}
 
 
+def _mock_policy_response(mock_policy: dict[str, Any]) -> dict[str, Any]:
+    """Return deterministic structured output for offline research-agent runs."""
+    policy = mock_policy.get("kind")
+    if policy == "prediction":
+        return {
+            "predicted_holdout_sharpe": float(mock_policy.get("predicted_sharpe", 0.0)),
+            "rationale": "Mock prediction based on the in-sample trial history.",
+        }
+    if policy != "researcher":
+        raise ValueError(f"Unknown mock policy: {policy}")
+    rng = random.Random(int(mock_policy.get("seed", 0)) + 1_000_003 * int(mock_policy.get("iteration", 0)))
+    best = mock_policy.get("best_spec")
+    if not best:
+        candidate = {
+            "name": "mock momentum candidate", "signal_type": "momentum",
+            "lookback_days": 126, "skip_days": 21, "top_n": 5,
+            "rebalance": "M", "long_short": False, "cost_bps": 10.0,
+            "start": mock_policy["start"], "end": mock_policy["end"],
+        }
+    else:
+        candidate = dict(best)
+        candidate["lookback_days"] = max(5, min(504, candidate["lookback_days"] + rng.choice([-42, -21, 21, 42])))
+        candidate["top_n"] = max(1, min(24, candidate["top_n"] + rng.choice([-2, -1, 1, 2])))
+        if rng.random() < 0.25:
+            choices = [item for item in ("momentum", "reversal", "low_vol", "trend") if item != candidate["signal_type"]]
+            candidate["signal_type"] = rng.choice(choices)
+        candidate["name"] = "mock hill-climb candidate"
+        candidate["start"] = mock_policy["start"]
+        candidate["end"] = mock_policy["end"]
+    return candidate
+
+
 def chat(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
     json_schema: dict[str, Any] | None = None,
+    mock_policy: dict[str, Any] | None = None,
 ) -> LLMResponse:
     """Send a chat request through the configured provider, retrying transient errors."""
     del tools  # Tool dispatch will be added with the agent work.
@@ -72,7 +106,9 @@ def chat(
         raise ValueError(f"Unsupported PROVIDER: {provider}")
     model = os.getenv(f"{provider.upper()}_MODEL", "mock-v1") if provider != "mock" else "mock-v1"
     if provider == "mock":
-        if json_schema is not None:
+        if mock_policy is not None:
+            content = json.dumps(_mock_policy_response(mock_policy), separators=(",", ":"))
+        elif json_schema is not None:
             payload = _schema_example(json_schema)
             content = json.dumps(payload, separators=(",", ":"))
         else:

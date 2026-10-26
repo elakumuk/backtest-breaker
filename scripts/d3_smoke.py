@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from bb.audit import cost_stress, param_sensitivity, walk_forward
-from bb.data import load_universe
+from bb.data import DataGate
 from bb.engine import run_backtest
 from bb.metrics import deflated_sharpe_ratio, sharpe
 from bb.spec import StrategySpec
@@ -19,7 +19,7 @@ from bb.spec import StrategySpec
 def main() -> None:
     """Load runtime source data and print stability / multiple-testing results."""
     started = time.perf_counter()
-    returns, rf = load_universe()
+    returns, rf = DataGate().in_sample()
     spec = StrategySpec(
         name="12-1 momentum", signal_type="momentum", lookback_days=252,
         skip_days=21, top_n=5, rebalance="M", long_short=False,

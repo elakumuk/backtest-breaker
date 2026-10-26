@@ -15,6 +15,8 @@ import pandas as pd
 from bb.engine import run_backtest
 from bb.metrics import annual_return, annual_turnover, deflated_sharpe_ratio, max_drawdown, pbo_cscv, sharpe
 from bb.spec import StrategySpec
+from bb import data as data_module
+from bb.data import DataGate
 
 
 class HoldoutSealedError(RuntimeError):
@@ -28,6 +30,21 @@ def default_holdout_start(index: pd.DatetimeIndex) -> date:
     return date(int(index.max().year) - 2, 1, 1)
 
 
+def assert_in_sample(
+    spec: StrategySpec,
+    returns: pd.DataFrame,
+    holdout_start: date | None = None,
+) -> None:
+    """Reject audit input whose requested or supplied data overlaps the holdout."""
+    if holdout_start is None:
+        holdout_start = DataGate().holdout_start
+    boundary = pd.Timestamp(holdout_start)
+    if spec.end >= holdout_start:
+        raise HoldoutSealedError(f"strategy end {spec.end} reaches the sealed holdout starting {holdout_start}")
+    if len(returns.index) and returns.index.max() >= boundary:
+        raise HoldoutSealedError(f"returns include sealed holdout dates from {holdout_start}")
+
+
 def _new_spec(spec: StrategySpec, **updates: Any) -> StrategySpec:
     """Create a fully revalidated spec with selected overrides."""
     payload = spec.model_dump()
@@ -36,6 +53,7 @@ def _new_spec(spec: StrategySpec, **updates: Any) -> StrategySpec:
 
 
 def _metric_for(spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) -> float:
+    assert_in_sample(spec, returns)
     result = run_backtest(spec, returns, rf)
     return sharpe(result.daily_returns, rf.reindex(result.daily_returns.index), long_short=spec.long_short)
 
@@ -48,6 +66,7 @@ def walk_forward(
     test_years: int = 1,
 ) -> list[dict[str, Any]]:
     """Return fixed-parameter Sharpe checks over contiguous, non-overlapping test folds."""
+    assert_in_sample(spec, returns)
     if train_years < 1 or test_years < 1:
         raise ValueError("train_years and test_years must be positive")
     available_end = min(spec.end, returns.index.max().date())
@@ -74,6 +93,7 @@ def walk_forward(
 
 def param_sensitivity(spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) -> dict[str, Any]:
     """Re-run at lookback and top_n perturbations of minus/plus 20 percent."""
+    assert_in_sample(spec, returns)
     runs: dict[str, float] = {}
     for field, low, high in (("lookback_days", 5, 504), ("top_n", 1, 24)):
         original = getattr(spec, field)
@@ -88,6 +108,7 @@ def param_sensitivity(spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) 
 
 def cost_stress(spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) -> dict[int, float]:
     """Return annualized Sharpe at fixed execution-cost assumptions in basis points."""
+    assert_in_sample(spec, returns)
     return {bps: _metric_for(_new_spec(spec, cost_bps=float(bps)), returns, rf) for bps in (5, 10, 25, 50)}
 
 
@@ -103,8 +124,15 @@ def _holdout_digest(frame: pd.DataFrame) -> str:
 class HoldoutVault:
     """Persist a hash-sealed holdout and allow it to be evaluated only once."""
 
-    def __init__(self, holdout_start: date, log_path: str | Path = "audit_log.jsonl") -> None:
-        self.holdout_start = holdout_start
+    def __init__(
+        self,
+        log_path: str | Path = "audit_log.jsonl",
+        holdout_years: int = 3,
+    ) -> None:
+        full_returns, _ = data_module._load_universe()
+        if holdout_years < 1:
+            raise ValueError("holdout_years must be positive")
+        self.holdout_start = date(int(full_returns.index.max().year) - holdout_years + 1, 1, 1)
         self.log_path = Path(log_path)
 
     def _events(self) -> list[dict[str, Any]]:
@@ -116,19 +144,29 @@ class HoldoutVault:
                 events.append(json.loads(line))
         return events
 
+    @property
+    def is_sealed(self) -> bool:
+        """Whether a sealed event already exists in the persistent log."""
+        return any(event.get("event") == "sealed" for event in self._events())
+
     def _append(self, event: dict[str, Any]) -> None:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         with self.log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(json.dumps(event, sort_keys=True, default=str) + "\n")
 
+    def _load_data(self) -> tuple[pd.DataFrame, pd.Series]:
+        """Read full raw source data privately for sealing/opening only."""
+        return data_module._load_universe()
+
     def _holdout(self, returns: pd.DataFrame) -> pd.DataFrame:
         return returns.loc[returns.index >= pd.Timestamp(self.holdout_start)]
 
-    def seal(self, returns: pd.DataFrame) -> str:
+    def seal(self) -> str:
         """Hash the holdout data and persist the sealed event."""
         events = self._events()
         if any(event.get("event") == "sealed" for event in events):
             raise HoldoutSealedError("holdout is already sealed")
+        returns, _ = self._load_data()
         holdout = self._holdout(returns)
         if holdout.empty:
             raise ValueError("holdout slice is empty")
@@ -136,32 +174,39 @@ class HoldoutVault:
         self._append({"event": "sealed", "holdout_start": self.holdout_start.isoformat(), "sha256": digest})
         return digest
 
-    def in_sample(self, returns: pd.DataFrame) -> pd.DataFrame:
-        """Return data strictly before the sealed holdout boundary."""
-        return returns.loc[returns.index < pd.Timestamp(self.holdout_start)].copy()
-
     def register_prediction(self, spec: StrategySpec, predicted_sharpe: float, rationale: str) -> None:
         """Persist the required prediction before the one permitted holdout run."""
         events = self._events()
-        if not any(event.get("event") == "sealed" for event in events):
+        sealed = [event for event in events if event.get("event") == "sealed"]
+        if not sealed:
             raise HoldoutSealedError("seal the holdout before registering a prediction")
+        if date.fromisoformat(sealed[-1]["holdout_start"]) != self.holdout_start:
+            raise HoldoutSealedError("sealed holdout_start does not match this vault")
         if any(event.get("event") == "opened" for event in events):
             raise HoldoutSealedError("holdout has already been opened")
+        if spec.end >= self.holdout_start:
+            raise HoldoutSealedError("prediction spec must end before the holdout")
         self._append({
             "event": "prediction", "spec": json.loads(spec.to_json()),
             "predicted_sharpe": float(predicted_sharpe), "rationale": rationale,
         })
 
-    def open_once(self, spec: StrategySpec, returns: pd.DataFrame, rf: pd.Series) -> dict[str, Any]:
+    def open_once(self, spec: StrategySpec) -> dict[str, Any]:
         """Verify, run, and permanently record the single holdout evaluation."""
         events = self._events()
         sealed = [event for event in events if event.get("event") == "sealed"]
         if not sealed:
             raise HoldoutSealedError("holdout has not been sealed")
+        if date.fromisoformat(sealed[-1]["holdout_start"]) != self.holdout_start:
+            raise HoldoutSealedError("sealed holdout_start does not match this vault")
         if not any(event.get("event") == "prediction" for event in events):
             raise HoldoutSealedError("register a prediction before opening the holdout")
+        prediction = next(event for event in reversed(events) if event.get("event") == "prediction")
+        if prediction.get("spec") != json.loads(spec.to_json()):
+            raise HoldoutSealedError("opened spec does not match the registered prediction")
         if any(event.get("event") == "opened" for event in events):
             raise HoldoutSealedError("holdout has already been opened")
+        returns, rf = self._load_data()
         holdout = self._holdout(returns)
         expected_hash = sealed[-1]["sha256"]
         if _holdout_digest(holdout) != expected_hash:
@@ -211,6 +256,7 @@ def run_audit(
     trials_history: list[float] | pd.DataFrame,
 ) -> AuditReport:
     """Run reproducible performance, stability, cost, and multiple-testing checks."""
+    assert_in_sample(spec, returns)
     result = run_backtest(spec, returns, rf)
     aligned_rf = rf.reindex(result.daily_returns.index).fillna(0.0)
     observed_sharpe = sharpe(result.daily_returns, aligned_rf, long_short=spec.long_short)

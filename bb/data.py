@@ -7,6 +7,7 @@ import io
 import re
 import urllib.request
 import zipfile
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -61,8 +62,8 @@ def _read_value_weighted_daily(lines: list[str]) -> pd.DataFrame:
     return _read_weighted_section(lines, 49)
 
 
-def load_universe() -> tuple[pd.DataFrame, pd.Series]:
-    """Load 49 value-weighted industry returns and daily risk-free rates."""
+def _load_universe() -> tuple[pd.DataFrame, pd.Series]:
+    """Private loader for 49 value-weighted industry returns and daily risk-free rates."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     returns_path = CACHE_DIR / "industry_returns.parquet"
     rf_path = CACHE_DIR / "risk_free.parquet"
@@ -76,3 +77,30 @@ def load_universe() -> tuple[pd.DataFrame, pd.Series]:
     returns.to_parquet(returns_path)
     rf.to_frame().to_parquet(rf_path)
     return returns, rf
+
+
+class DataGate:
+    """Public access point that exposes only pre-holdout returns and risk-free rates."""
+
+    def __init__(self, holdout_years: int = 3) -> None:
+        if holdout_years < 1:
+            raise ValueError("holdout_years must be positive")
+        self.holdout_years = holdout_years
+        self._returns, self._rf = _load_universe()
+        if self._returns.empty:
+            raise ValueError("Ken French returns are empty")
+        self._holdout_start = pd.Timestamp(
+            year=int(self._returns.index.max().year) - holdout_years + 1,
+            month=1,
+            day=1,
+        ).date()
+
+    @property
+    def holdout_start(self) -> date:
+        """The first calendar date reserved for the holdout period."""
+        return self._holdout_start
+
+    def in_sample(self) -> tuple[pd.DataFrame, pd.Series]:
+        """Return copies containing dates strictly before ``holdout_start``."""
+        mask = self._returns.index < pd.Timestamp(self.holdout_start)
+        return self._returns.loc[mask].copy(), self._rf.loc[self._rf.index < pd.Timestamp(self.holdout_start)].copy()

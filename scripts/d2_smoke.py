@@ -8,14 +8,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from bb.data import load_universe
+from bb.data import DataGate
 from bb.engine import run_backtest
 from bb.spec import StrategySpec
 
 
 def main() -> None:
     """Load licensed data at runtime and print basic strategy diagnostics."""
-    returns, rf = load_universe()
+    returns, rf = DataGate().in_sample()
     spec = StrategySpec(
         name="12-1 momentum", signal_type="momentum", lookback_days=252,
         skip_days=21, top_n=5, rebalance="M", long_short=False,
