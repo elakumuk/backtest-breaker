@@ -15,7 +15,7 @@ import pandas as pd
 BASE_URL = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
 RETURNS_ZIP = "49_Industry_Portfolios_daily_CSV.zip"
 FACTORS_ZIP = "F-F_Research_Data_Factors_daily_CSV.zip"
-CACHE_DIR = Path("data")
+CACHE_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 def _download_csv(zip_name: str) -> list[str]:
@@ -50,6 +50,17 @@ def _read_daily_table(lines: list[str], n_values: int) -> pd.DataFrame:
     return frame.sort_index()
 
 
+def _read_weighted_section(lines: list[str], n_values: int) -> pd.DataFrame:
+    """Select and parse a value-weighted section with the requested width."""
+    marker = next(i for i, line in enumerate(lines) if "Average Value Weighted Returns -- Daily" in line)
+    return _read_daily_table(lines[marker + 1 :], n_values)
+
+
+def _read_value_weighted_daily(lines: list[str]) -> pd.DataFrame:
+    """Select and parse the 49-industry value-weighted daily section."""
+    return _read_weighted_section(lines, 49)
+
+
 def load_universe() -> tuple[pd.DataFrame, pd.Series]:
     """Load 49 value-weighted industry returns and daily risk-free rates."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -59,8 +70,7 @@ def load_universe() -> tuple[pd.DataFrame, pd.Series]:
         return pd.read_parquet(returns_path), pd.read_parquet(rf_path).iloc[:, 0].rename("RF")
 
     returns_lines = _download_csv(RETURNS_ZIP)
-    marker = next(i for i, line in enumerate(returns_lines) if "Average Value Weighted Returns" in line)
-    returns = _read_daily_table(returns_lines[marker + 1 :], 49)
+    returns = _read_value_weighted_daily(returns_lines)
     factors = _read_daily_table(_download_csv(FACTORS_ZIP), 4)
     rf = factors["RF"].reindex(returns.index).rename("RF")
     returns.to_parquet(returns_path)

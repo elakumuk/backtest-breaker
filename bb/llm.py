@@ -55,6 +55,11 @@ def _schema_example(schema: dict[str, Any]) -> Any:
     return None
 
 
+def _openai_response_format(schema: dict[str, Any]) -> dict[str, Any]:
+    """Wrap a JSON schema in the strict OpenAI-compatible response format."""
+    return {"type": "json_schema", "json_schema": {"name": "output", "schema": schema, "strict": True}}
+
+
 def chat(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
@@ -89,7 +94,7 @@ def chat(
     client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
     request: dict[str, Any] = {"model": model, "messages": messages}
     if json_schema is not None:
-        request["response_format"] = {"type": "json_schema", "json_schema": json_schema}
+        request["response_format"] = _openai_response_format(json_schema)
     last_error: Exception | None = None
     for attempt in range(3):
         try:
