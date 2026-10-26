@@ -1,0 +1,6 @@
+{
+  "leaky_shift.ipynb": [{"cell_index": 1, "bug_class": "lookahead_shift"}],
+  "leaky_norm.ipynb": [{"cell_index": 1, "bug_class": "fullsample_leak"}],
+  "leaky_universe.ipynb": [{"cell_index": 1, "bug_class": "universe_selection"}],
+  "clean.ipynb": []
+}
