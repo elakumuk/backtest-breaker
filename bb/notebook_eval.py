@@ -34,7 +34,7 @@ def score(
                     label for label in unmatched
                     if label.get("bug_class") == bug_class
                     and isinstance(index, int)
-                    and abs(index - int(label["cell_index"])) <= 1
+                    and index == int(label["cell_index"])
                 ),
                 None,
             )
@@ -61,7 +61,7 @@ def _counts(findings: list[dict[str, Any]], labels: list[dict[str, Any]]) -> tup
             label for label in unmatched
             if finding.get("bug_class") == label.get("bug_class")
             and isinstance(finding.get("cell_index"), int)
-            and abs(finding["cell_index"] - int(label["cell_index"])) <= 1
+            and finding["cell_index"] == int(label["cell_index"])
         ), None)
         if match is None:
             fp += 1

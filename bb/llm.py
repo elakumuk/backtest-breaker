@@ -24,6 +24,9 @@ class LLMResponse:
     model: str
     provider: str
     usage: dict[str, int]
+    tool_calls: list[dict[str, Any]] | None = None
+    finish_reason: str | None = None
+    arguments_error: str | None = None
 
 
 def _schema_example(schema: dict[str, Any]) -> Any:
@@ -40,7 +43,7 @@ def _schema_example(schema: dict[str, Any]) -> Any:
         required = schema.get("required", list(props))
         return {key: _schema_example(props[key]) for key in required if key in props}
     if typ == "array":
-        return [_schema_example(schema.get("items", {}))]
+        return [_schema_example(schema.get("items", {})) for _ in range(int(schema.get("minItems", 1)))]
     if typ == "string":
         return "mock"
     if typ == "integer":
@@ -69,6 +72,15 @@ def _mock_policy_response(mock_policy: dict[str, Any]) -> dict[str, Any]:
             "predicted_holdout_sharpe": float(mock_policy.get("predicted_sharpe", 0.0)),
             "rationale": "Mock prediction based on the in-sample trial history.",
         }
+    if policy == "auditor":
+        script = mock_policy.get("script", [])
+        turn = int(mock_policy.get("turn", 0))
+        if turn < len(script):
+            item = script[turn]
+            if "tool_calls" in item:
+                return {"_tool_calls": item["tool_calls"], "_finish_reason": "tool_calls"}
+            return item
+        return {"model_verdict": "FRAGILE", "bullets": ["The audit completed using computed evidence."], "predicted_holdout_sharpe": 0.0}
     if policy != "researcher":
         raise ValueError(f"Unknown mock policy: {policy}")
     rng = random.Random(int(mock_policy.get("seed", 0)) + 1_000_003 * int(mock_policy.get("iteration", 0)))
@@ -100,21 +112,23 @@ def chat(
     mock_policy: dict[str, Any] | None = None,
 ) -> LLMResponse:
     """Send a chat request through the configured provider, retrying transient errors."""
-    del tools  # Tool dispatch will be added with the agent work.
     provider = os.getenv("PROVIDER", "mock").strip().lower()
     if provider not in {"mock", "meta", "baseten", "fireworks"}:
         raise ValueError(f"Unsupported PROVIDER: {provider}")
     model = os.getenv(f"{provider.upper()}_MODEL", "mock-v1") if provider != "mock" else "mock-v1"
     if provider == "mock":
         if mock_policy is not None:
-            content = json.dumps(_mock_policy_response(mock_policy), separators=(",", ":"))
+            payload = _mock_policy_response(mock_policy)
+            calls = payload.pop("_tool_calls", [])
+            finish_reason = payload.pop("_finish_reason", "stop")
+            content = json.dumps(payload, separators=(",", ":")) if payload else ""
         elif json_schema is not None:
             payload = _schema_example(json_schema)
             content = json.dumps(payload, separators=(",", ":"))
         else:
             prompt = next((str(m.get("content", "")) for m in reversed(messages) if m.get("role") == "user"), "")
             content = "Mock response" if not prompt else f"Mock response: {prompt[:120]}"
-        response = LLMResponse(content, model, provider, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+        response = LLMResponse(content, model, provider, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, calls if mock_policy and mock_policy.get("kind") == "auditor" else [], finish_reason if mock_policy and mock_policy.get("kind") == "auditor" else "stop")
         logger.info("llm provider=%s model=%s usage=%s", provider, model, response.usage)
         return response
     if provider == "meta":
@@ -127,18 +141,31 @@ def chat(
     base_url = os.getenv(f"{prefix}_BASE_URL") if provider == "baseten" else "https://api.fireworks.ai/inference/v1"
     if not api_key or not model or not base_url:
         raise ValueError(f"{prefix}_API_KEY, {prefix}_MODEL, and endpoint configuration are required")
-    client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
+    client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0, timeout=180)
     request: dict[str, Any] = {"model": model, "messages": messages}
     if json_schema is not None:
         request["response_format"] = _openai_response_format(json_schema)
+    if tools is not None:
+        request["tools"] = tools
     last_error: Exception | None = None
     for attempt in range(3):
         try:
             result = client.chat.completions.create(**request)
             usage = result.usage.model_dump() if result.usage else {}
-            content = result.choices[0].message.content or ""
+            message = result.choices[0].message
+            content = message.content or ""
+            calls = []
+            arguments_error = None
+            for call in (message.tool_calls or []):
+                raw = call.function.arguments
+                try:
+                    arguments = json.loads(raw)
+                except (TypeError, json.JSONDecodeError) as exc:
+                    arguments = raw
+                    arguments_error = str(exc)
+                calls.append({"id": call.id, "name": call.function.name, "arguments": arguments})
             logger.info("llm provider=%s model=%s usage=%s", provider, model, usage)
-            return LLMResponse(content, model, provider, usage)
+            return LLMResponse(content, model, provider, usage, calls, result.choices[0].finish_reason, arguments_error)
         except Exception as exc:  # SDK errors may include transient network/server faults.
             last_error = exc
             if attempt == 2:

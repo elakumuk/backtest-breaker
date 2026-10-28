@@ -34,8 +34,12 @@ FINDINGS_SCHEMA = {
                     "bug_class": {"type": "string", "enum": list(BUG_CLASSES)},
                     "explanation": {"type": "string"},
                     "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+                    "is_bug": {"type": "boolean"},
+                    "fix": {"type": ["object", "null"], "properties": {
+                        "cell_index": {"type": "integer"}, "old": {"type": "string"}, "new": {"type": "string"}},
+                        "required": ["cell_index", "old", "new"], "additionalProperties": False},
                 },
-                "required": ["cell_index", "line", "bug_class", "explanation", "severity"],
+                "required": ["cell_index", "line", "bug_class", "explanation", "severity", "is_bug", "fix"],
                 "additionalProperties": False,
             },
         }
@@ -112,6 +116,7 @@ class NotebookReport:
     notebook: str
     detector: str
     findings: list[dict[str, Any]]
+    dismissed: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe object."""
@@ -146,19 +151,31 @@ class StaticDetector:
                 and re.search(r"(positions|signal)\s*\*\s*(asset_returns|returns)", normalized)
                 and not re.search(r"\.shift\s*\(\s*1\s*\)", normalized)
             ):
-                line = _line_number(lines, r"positions\s*=\s*signal\(")
-                findings.append(_finding(cell_index, line, "lookahead_shift", "Signal-derived positions use same-period returns without a one-bar shift.", "high"))
+                line = _line_number(lines, r"return\s+prices\.pct_change")
+                old = lines[line - 1] if line <= len(lines) else ""
+                new = old.replace("pct_change()", "pct_change().shift(1)", 1)
+                findings.append(_finding(cell_index, line, "lookahead_shift", "Signal-derived positions use same-period returns without a one-bar shift.", "high", old, new))
             if re.search(r"\.mean\s*\(|\.std\s*\(", normalized):
                 for line_idx, line_text in enumerate(lines, start=1):
                     if (
                         re.search(r"\b\w*(?:mean|std)\s*=.*\.(mean|std)\s*\(", line_text)
                         and not re.search(r"rolling|expanding|shift\s*\(", line_text)
                     ):
-                        findings.append(_finding(cell_index, line_idx, "fullsample_leak", "Signal normalization uses a full-series statistic that can include future observations.", "high"))
+                        if "full_mean" in line_text:
+                            old = line_text + "\n" + lines[line_idx] if line_idx < len(lines) and "full_std" in lines[line_idx] else line_text
+                            new = old.replace("lagged.mean(axis=0)", "lagged.expanding().mean()", 1).replace("lagged.std(axis=0)", "lagged.expanding().std()", 1)
+                        else:
+                            old = line_text
+                            new = re.sub(r"\.(mean|std)\(\)", r".expanding().\1()", line_text, count=1)
+                        findings.append(_finding(cell_index, line_idx, "fullsample_leak", "Signal normalization uses a full-series statistic that can include future observations.", "high", old, new))
                         break
             if re.search(r"\.prod\s*\(\s*axis\s*=\s*0\s*\)", normalized) and re.search(r">\s*0", normalized):
                 line = _line_number(lines, r"prod\s*\(\s*axis\s*=\s*0\s*\)")
-                findings.append(_finding(cell_index, line, "universe_selection", "The asset universe is selected using full-period cumulative returns.", "critical"))
+                old = lines[line - 1] if line <= len(lines) else ""
+                target = next((idx for idx, text in enumerate(lines) if "positive_full_period =" in text), line - 1)
+                old = lines[target]
+                new = old[: len(old) - len(old.lstrip())] + "positive_full_period = pd.Series(True, index=returns.columns)"
+                findings.append(_finding(cell_index, target + 1, "universe_selection", "The asset universe is selected using full-period cumulative returns.", "critical", old, new))
         return findings
 
 
@@ -190,7 +207,8 @@ class LLMDetector:
                     "role": "system",
                     "content": (
                         "Audit notebook backtest code for bug classes: " + ", ".join(BUG_CLASSES)
-                        + ". Return only JSON matching the supplied findings schema. Cite exact cell and line."
+                        + ". Report only real bugs. An empty findings list is a valid and expected answer for clean code. "
+                        "Return only JSON matching the supplied findings schema. Cite exact cell and line and give a minimal fix."
                     ),
                 },
                 {"role": "user", "content": json.dumps(cells)},
@@ -204,7 +222,7 @@ class LLMDetector:
         return findings
 
 
-def _finding(cell_index: int, line: int, bug_class: str, explanation: str, severity: str) -> dict[str, Any]:
+def _finding(cell_index: int, line: int, bug_class: str, explanation: str, severity: str, old: str | None = None, new: str | None = None) -> dict[str, Any]:
     """Create a normalized detector finding."""
     return {
         "cell_index": cell_index,
@@ -212,6 +230,8 @@ def _finding(cell_index: int, line: int, bug_class: str, explanation: str, sever
         "bug_class": bug_class,
         "explanation": explanation,
         "severity": severity,
+        "is_bug": True,
+        "fix": {"cell_index": cell_index, "old": old, "new": new} if old is not None and new is not None else None,
         "detector": "StaticDetector",
     }
 
@@ -306,7 +326,9 @@ def audit_notebook(
     detector = detector or LLMDetector()
     runner = runner or LocalSubprocessRunner()
     clean_path = Path(clean_notebook).resolve() if clean_notebook else path.parent / "clean.ipynb"
-    findings = detector.detect(path)
+    detected = detector.detect(path)
+    dismissed = [dict(item, status="DISMISSED") for item in detected if item.get("is_bug") is False]
+    findings = [item for item in detected if item.get("is_bug") is not False]
     reported: list[dict[str, Any]] = []
     for finding_number, raw_finding in enumerate(findings, start=1):
         finding = dict(raw_finding)
@@ -317,11 +339,26 @@ def audit_notebook(
         test_path = tests_dir / f"test_finding_{finding_number}.py"
         status = "UNPROVEN"
         reason = ""
+        fixed_source = None
         candidate_tail = ""
         clean_tail = ""
         try:
             candidate_module = _convert_notebook(path, workdir, "module_under_test")
             clean_module = _convert_notebook(clean_path, workdir, "clean_module")
+            cells = nbformat.read(path, as_version=4).cells
+            fix = finding.get("fix")
+            if not fix:
+                reason = "finding has no applicable fix"
+                raise ValueError(reason)
+            fix_cell = fix.get("cell_index")
+            if fix_cell != finding.get("cell_index") or not 0 <= fix_cell < len(cells) or cells[fix_cell].cell_type != "code":
+                reason = "fix does not target the cited code cell"
+                raise ValueError(reason)
+            source = cells[fix_cell].source
+            if not fix.get("old") or source.count(fix["old"]) != 1:
+                reason = "fix does not apply: old text must occur exactly once in the cited cell"
+                raise ValueError(reason)
+            fixed_source = source.replace(fix["old"], fix["new"], 1)
             if isinstance(detector, LLMDetector) and not detector.mock_used:
                 code = _llm_test_code(finding, candidate_module.read_text(encoding="utf-8"))
             else:
@@ -340,23 +377,48 @@ def audit_notebook(
                 clean_result = runner.run(test_path, workdir, timeout_seconds)
                 clean_tail = _tail(clean_result.output)
                 if clean_result.returncode == 0 and not clean_result.timed_out:
-                    status = "PROVEN"
-                    reason = "invariant failed on candidate and passed on clean control"
+                    # Patch only the cited notebook cell, then export that isolated source.
+                    patched = nbformat.read(path, as_version=4)
+                    patched.cells[fix_cell].source = fixed_source
+                    fixed_notebook = workdir / "fixed.ipynb"
+                    nbformat.write(patched, fixed_notebook)
+                    fixed_module = _convert_notebook(fixed_notebook, workdir, "module_under_test")
+                    fixed_result = runner.run(test_path, workdir, timeout_seconds)
+                    candidate_tail += "\nFIXED SOURCE TEST\n" + _tail(fixed_result.output)
+                    if fixed_result.returncode == 0 and not fixed_result.timed_out:
+                        status = "PROVEN"
+                        reason = "invariant failed on candidate, passed with finding fix, and passed on clean control"
+                    else:
+                        reason = "finding-specific fix did not pass invariant"
                 else:
                     reason = "test not specific: it failed or timed out on clean control"
         except Exception as exc:
             reason = f"proof setup failed: {type(exc).__name__}: {exc}"
         finding.update(
             status=status,
+            fixed_source=fixed_source,
             reason=reason,
             test_file=str(test_path),
             runner_stdout_tail={"candidate": candidate_tail, "clean_sanity": clean_tail},
         )
         reported.append(finding)
+    severity_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    proof_groups: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    for finding in reported:
+        fix = finding.get("fix") or {}
+        if finding.get("status") == "PROVEN":
+            proof_groups.setdefault((int(fix.get("cell_index", -1)), str(fix.get("old", ""))), []).append(finding)
+    for duplicates in proof_groups.values():
+        if len(duplicates) > 1:
+            winner = max(duplicates, key=lambda item: severity_rank.get(item.get("severity", "low"), 0))
+            for finding in duplicates:
+                if finding is not winner:
+                    finding["status"] = "DUPLICATE"
+                    finding["reason"] = f"same source-line fix is represented by higher-severity finding ({winner.get('severity')})"
     detector_name = detector.name
     if isinstance(detector, LLMDetector) and detector.mock_used:
         detector_name += "(mock->static)"
-    return NotebookReport(str(path), detector_name, reported)
+    return NotebookReport(str(path), detector_name, reported, dismissed)
 
 
 def main() -> None:

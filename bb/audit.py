@@ -191,7 +191,7 @@ class HoldoutVault:
             "predicted_sharpe": float(predicted_sharpe), "rationale": rationale,
         })
 
-    def open_once(self, spec: StrategySpec) -> dict[str, Any]:
+    def open_once(self, spec: StrategySpec, *, replay: bool = False) -> dict[str, Any]:
         """Verify, run, and permanently record the single holdout evaluation."""
         events = self._events()
         sealed = [event for event in events if event.get("event") == "sealed"]
@@ -205,6 +205,9 @@ class HoldoutVault:
         if prediction.get("spec") != json.loads(spec.to_json()):
             raise HoldoutSealedError("opened spec does not match the registered prediction")
         if any(event.get("event") == "opened" for event in events):
+            if replay:
+                opened = next(event for event in reversed(events) if event.get("event") == "opened")
+                return {**opened["result"], "replayed": True}
             raise HoldoutSealedError("holdout has already been opened")
         returns, rf = self._load_data()
         holdout = self._holdout(returns)

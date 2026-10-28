@@ -66,3 +66,46 @@ def test_runner_timeout_is_reported_as_unproven(tmp_path, monkeypatch):
     assert finding["status"] == "UNPROVEN"
     assert finding["reason"] == "candidate test timed out"
     assert "RUNNER_TIMEOUT" in finding["runner_stdout_tail"]["candidate"]
+
+
+def test_wrong_cell_fix_is_unproven():
+    class Detector(StaticDetector):
+        name = "test"
+        def detect(self, notebook_path):
+            finding = super().detect(notebook_path)[0]
+            finding["fix"] = {"cell_index": 0, "old": "signal(prices)", "new": "signal(prices).shift(1)"}
+            return [finding]
+    result = audit_notebook(NOTEBOOKS / "leaky_shift.ipynb", detector=Detector(), clean_notebook=NOTEBOOKS / "clean.ipynb")
+    assert result.findings[0]["status"] == "UNPROVEN"
+
+
+def test_fix_old_must_occur_once():
+    class Detector(StaticDetector):
+        name = "test"
+        def detect(self, notebook_path):
+            finding = super().detect(notebook_path)[0]
+            finding["fix"] = {"cell_index": finding["cell_index"], "old": "missing source", "new": "x"}
+            return [finding]
+    result = audit_notebook(NOTEBOOKS / "leaky_shift.ipynb", detector=Detector(), clean_notebook=NOTEBOOKS / "clean.ipynb")
+    assert result.findings[0]["status"] == "UNPROVEN"
+
+
+def test_same_fix_is_deduped_by_severity():
+    class Detector(StaticDetector):
+        name = "test"
+        def detect(self, notebook_path):
+            finding = super().detect(notebook_path)[0]
+            duplicate = dict(finding, severity="low")
+            return [finding, duplicate]
+    result = audit_notebook(NOTEBOOKS / "leaky_shift.ipynb", detector=Detector(), clean_notebook=NOTEBOOKS / "clean.ipynb")
+    assert sorted(item["status"] for item in result.findings) == ["DUPLICATE", "PROVEN"]
+
+
+def test_false_positive_hypothesis_is_kept_in_dismissed():
+    class Detector(StaticDetector):
+        name = "test"
+        def detect(self, notebook_path):
+            return [{"cell_index": 1, "line": 1, "bug_class": "no_costs", "explanation": "Costs are modeled.", "severity": "low", "is_bug": False, "fix": None}]
+    result = audit_notebook(NOTEBOOKS / "clean.ipynb", detector=Detector())
+    assert result.findings == []
+    assert result.dismissed[0]["status"] == "DISMISSED"
