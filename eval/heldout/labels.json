@@ -1,0 +1,100 @@
+[
+  {
+    "notebook": "bfill_gaps.ipynb",
+    "control": "bfill_gaps__clean.ipynb",
+    "labels": [
+      {
+        "cell_index": 2,
+        "accept": [
+          "lookahead_shift",
+          "fullsample_leak"
+        ]
+      }
+    ]
+  },
+  {
+    "notebook": "bfill_gaps__clean.ipynb",
+    "control": "decoy_fixed_params.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "centered_rolling.ipynb",
+    "control": "centered_rolling__clean.ipynb",
+    "labels": [
+      {
+        "cell_index": 2,
+        "accept": [
+          "lookahead_shift",
+          "fullsample_leak"
+        ]
+      }
+    ]
+  },
+  {
+    "notebook": "centered_rolling__clean.ipynb",
+    "control": "decoy_fixed_params.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "scaler_fit_all.ipynb",
+    "control": "scaler_fit_all__clean.ipynb",
+    "labels": [
+      {
+        "cell_index": 2,
+        "accept": [
+          "fullsample_leak"
+        ]
+      }
+    ]
+  },
+  {
+    "notebook": "scaler_fit_all__clean.ipynb",
+    "control": "decoy_fixed_params.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "shuffled_split.ipynb",
+    "control": "shuffled_split__clean.ipynb",
+    "labels": [
+      {
+        "cell_index": 2,
+        "accept": [
+          "fullsample_leak"
+        ]
+      }
+    ]
+  },
+  {
+    "notebook": "shuffled_split__clean.ipynb",
+    "control": "decoy_fixed_params.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "asof_forward.ipynb",
+    "control": "asof_forward__clean.ipynb",
+    "labels": [
+      {
+        "cell_index": 2,
+        "accept": [
+          "lookahead_shift",
+          "fullsample_leak"
+        ]
+      }
+    ]
+  },
+  {
+    "notebook": "asof_forward__clean.ipynb",
+    "control": "decoy_fixed_params.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "decoy_forward_label.ipynb",
+    "control": "centered_rolling__clean.ipynb",
+    "labels": []
+  },
+  {
+    "notebook": "decoy_fixed_params.ipynb",
+    "control": "centered_rolling__clean.ipynb",
+    "labels": []
+  }
+]

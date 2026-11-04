@@ -28,6 +28,8 @@ def test_research_logs_each_trial_and_registers_but_does_not_open(tmp_path, monk
     records = [json.loads(line) for line in (run.run_dir / "trials.jsonl").read_text().splitlines()]
     history = pd.read_parquet(run.run_dir / "trial_returns.parquet")
     assert len(records) == 5
+    assert all("latency_seconds" in record and record["latency_seconds"] >= 0 for record in records)
+    assert all("total_tokens" in record["token_usage"] for record in records)
     assert history.columns.tolist() == [record["trial_id"] for record in records]
     assert all(record["spec"] is None or date.fromisoformat(record["spec"]["end"]) < date(2013, 1, 1) for record in records)
     events = [json.loads(line)["event"] for line in (run.run_dir / "audit_log.jsonl").read_text().splitlines()]
@@ -68,3 +70,27 @@ def test_invalid_candidates_are_retried_then_logged_as_failed(tmp_path, monkeypa
     history = pd.read_parquet(run.run_dir / "trial_returns.parquet")
     assert history.columns.tolist() == ["trial_001", "trial_002"]
     assert history["trial_001"].isna().all()
+
+
+def test_live_call_failure_is_logged_and_next_trial_continues(tmp_path, monkeypatch):
+    """An exhausted model call becomes one failed trial and does not stop the loop."""
+    returns, rf = _synthetic_data()
+    monkeypatch.setattr(data, "_load_universe", lambda: (returns, rf))
+    monkeypatch.setenv("PROVIDER", "mock")
+    from bb.agents import research
+
+    actual_chat = research.chat
+    calls = {"count": 0}
+
+    def first_call_fails(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise TimeoutError("request timed out after provider retries")
+        return actual_chat(*args, **kwargs)
+
+    monkeypatch.setattr(research, "chat", first_call_fails)
+    run = run_research(n_iters=2, seed=8, run_dir=tmp_path / "live-failure", verbose=False)
+    assert [trial["status"] for trial in run.trials] == ["failed", "ok"]
+    assert "timed out" in run.trials[0]["error"]
+    assert all("latency_seconds" in trial for trial in run.trials)
+    assert run.trials[0]["token_usage"]["total_tokens"] == 0

@@ -109,3 +109,15 @@ def test_false_positive_hypothesis_is_kept_in_dismissed():
     result = audit_notebook(NOTEBOOKS / "clean.ipynb", detector=Detector())
     assert result.findings == []
     assert result.dismissed[0]["status"] == "DISMISSED"
+
+
+def test_schema_failure_is_reported_as_clean_unproven(monkeypatch):
+    """An invalid detector response is surfaced as UNPROVEN instead of crashing."""
+    from bb import notebook_mode
+    from bb.llm import SchemaValidationError
+
+    monkeypatch.setenv("PROVIDER", "baseten")
+    monkeypatch.setattr(notebook_mode, "chat", lambda *args, **kwargs: (_ for _ in ()).throw(SchemaValidationError("invalid")))
+    report = audit_notebook(NOTEBOOKS / "clean.ipynb", detector=notebook_mode.LLMDetector())
+    assert report.findings[0]["status"] == "UNPROVEN"
+    assert report.findings[0]["reason"] == "model output did not match schema"

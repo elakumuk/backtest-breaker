@@ -1,0 +1,246 @@
+{
+  "bullets": [
+    "walk_forward median_sharpe 1.0238 from tools (folds sharpe range -1.1124 to 2.6556) including 2.6556, 1.248, 1.4648, 0.7965, 1.2047, 0.1126, -0.4719, 0.194, 1.9875, 1.1197, 1.0323, 0.7761, 1.049, -1.1124, 0.957, 1.0238, 0.0911, 1.301, 2.3986, 0.9022, 0.0856, 0.7658, 1.8201, -0.183, 2.0616, 1.057, 1.049, 0.0744, 0.9864",
+    "param_sensitivity stable: variants 0.6416, 0.6643, 0.6906, 0.6808 with spread 0.049",
+    "cost_stress resilient: 0.6644 at 5bps, 0.6489 at 10bps, 0.6022 at 25bps, 0.5243 at 50bps",
+    "deflated_sharpe dsr 0.0426 extremely low indicating high false discovery risk after accounting for multiple trials vs holdout",
+    "pbo 0.0653 low indicating low probability of backtest overfitting by combinatorial split",
+    "sealed holdout verified: sharpe 0.3029, annual_return 0.0933, max_drawdown -0.2333, annual_turnover 6.3084 - positive OOS but large drop vs walk_forward median 1.0238"
+  ],
+  "final_verdict": "FRAGILE",
+  "grounded": true,
+  "model": "meta-models/muse-spark-open-1026",
+  "model_disagrees": true,
+  "model_verdict": "SURVIVES",
+  "provider": "baseten",
+  "reasons": [
+    {
+      "rule": "FRAGILE: DSR below 0.95",
+      "threshold": 0.95,
+      "value": 0.0426
+    },
+    {
+      "rule": "FRAGILE: holdout Sharpe below half in-sample",
+      "threshold": 0.5,
+      "value": 0.3029
+    }
+  ],
+  "skipped_required": [],
+  "total_tokens": 12769,
+  "trace": [
+    {
+      "args": {},
+      "result": {
+        "folds": [
+          {
+            "sharpe": 2.6556,
+            "test_end": "1996-01-01",
+            "test_start": "1995-01-02"
+          },
+          {
+            "sharpe": 1.248,
+            "test_end": "1997-01-01",
+            "test_start": "1996-01-02"
+          },
+          {
+            "sharpe": 1.4648,
+            "test_end": "1998-01-01",
+            "test_start": "1997-01-02"
+          },
+          {
+            "sharpe": 0.7965,
+            "test_end": "1999-01-01",
+            "test_start": "1998-01-02"
+          },
+          {
+            "sharpe": 1.2047,
+            "test_end": "2000-01-01",
+            "test_start": "1999-01-02"
+          },
+          {
+            "sharpe": 0.1126,
+            "test_end": "2001-01-01",
+            "test_start": "2000-01-02"
+          },
+          {
+            "sharpe": -0.4719,
+            "test_end": "2002-01-01",
+            "test_start": "2001-01-02"
+          },
+          {
+            "sharpe": 0.194,
+            "test_end": "2003-01-01",
+            "test_start": "2002-01-02"
+          },
+          {
+            "sharpe": 1.9875,
+            "test_end": "2004-01-01",
+            "test_start": "2003-01-02"
+          },
+          {
+            "sharpe": 1.1197,
+            "test_end": "2005-01-01",
+            "test_start": "2004-01-02"
+          },
+          {
+            "sharpe": 1.0323,
+            "test_end": "2006-01-01",
+            "test_start": "2005-01-02"
+          },
+          {
+            "sharpe": 0.7761,
+            "test_end": "2007-01-01",
+            "test_start": "2006-01-02"
+          },
+          {
+            "sharpe": 1.049,
+            "test_end": "2008-01-01",
+            "test_start": "2007-01-02"
+          },
+          {
+            "sharpe": -1.1124,
+            "test_end": "2009-01-01",
+            "test_start": "2008-01-02"
+          },
+          {
+            "sharpe": 0.957,
+            "test_end": "2010-01-01",
+            "test_start": "2009-01-02"
+          },
+          {
+            "sharpe": 1.0238,
+            "test_end": "2011-01-01",
+            "test_start": "2010-01-02"
+          },
+          {
+            "sharpe": 0.0911,
+            "test_end": "2012-01-01",
+            "test_start": "2011-01-02"
+          },
+          {
+            "sharpe": 1.301,
+            "test_end": "2013-01-01",
+            "test_start": "2012-01-02"
+          },
+          {
+            "sharpe": 2.3986,
+            "test_end": "2014-01-01",
+            "test_start": "2013-01-02"
+          },
+          {
+            "sharpe": 0.9022,
+            "test_end": "2015-01-01",
+            "test_start": "2014-01-02"
+          },
+          {
+            "sharpe": 0.0856,
+            "test_end": "2016-01-01",
+            "test_start": "2015-01-02"
+          },
+          {
+            "sharpe": 0.7658,
+            "test_end": "2017-01-01",
+            "test_start": "2016-01-02"
+          },
+          {
+            "sharpe": 1.8201,
+            "test_end": "2018-01-01",
+            "test_start": "2017-01-02"
+          },
+          {
+            "sharpe": -0.183,
+            "test_end": "2019-01-01",
+            "test_start": "2018-01-02"
+          },
+          {
+            "sharpe": 2.0616,
+            "test_end": "2020-01-01",
+            "test_start": "2019-01-02"
+          },
+          {
+            "sharpe": 1.057,
+            "test_end": "2021-01-01",
+            "test_start": "2020-01-02"
+          },
+          {
+            "sharpe": 1.049,
+            "test_end": "2022-01-01",
+            "test_start": "2021-01-02"
+          },
+          {
+            "sharpe": 0.0744,
+            "test_end": "2023-01-01",
+            "test_start": "2022-01-02"
+          },
+          {
+            "sharpe": 0.9864,
+            "test_end": "2023-12-29",
+            "test_start": "2023-01-02"
+          }
+        ],
+        "median_sharpe": 1.0238
+      },
+      "seconds": 9.6213,
+      "tokens": 1406,
+      "tool": "walk_forward"
+    },
+    {
+      "args": {},
+      "result": {
+        "sharpe_by_variant": {
+          "lookback_days_minus_20pct_168": 0.6416,
+          "lookback_days_plus_20pct_252": 0.6643,
+          "top_n_minus_20pct_6": 0.6906,
+          "top_n_plus_20pct_10": 0.6808
+        },
+        "spread": 0.049
+      },
+      "seconds": 1.6975,
+      "tokens": 1406,
+      "tool": "param_sensitivity"
+    },
+    {
+      "args": {},
+      "result": {
+        "10": 0.6489,
+        "25": 0.6022,
+        "5": 0.6644,
+        "50": 0.5243
+      },
+      "seconds": 1.6981,
+      "tokens": 1406,
+      "tool": "cost_stress"
+    },
+    {
+      "args": {},
+      "result": {
+        "dsr": 0.0426
+      },
+      "seconds": 0.0047,
+      "tokens": 1406,
+      "tool": "deflated_sharpe"
+    },
+    {
+      "args": {},
+      "result": {
+        "pbo": 0.0653
+      },
+      "seconds": 46.9614,
+      "tokens": 1406,
+      "tool": "pbo"
+    },
+    {
+      "args": {},
+      "result": {
+        "annual_return": 0.0933,
+        "annual_turnover": 6.3084,
+        "max_drawdown": -0.2333,
+        "sharpe": 0.3029
+      },
+      "seconds": 0.2875,
+      "tokens": 3064,
+      "tool": "open_holdout"
+    }
+  ],
+  "ungrounded_numbers": []
+}

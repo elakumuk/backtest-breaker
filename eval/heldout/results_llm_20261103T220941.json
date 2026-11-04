@@ -1,0 +1,210 @@
+{
+  "detector": "LLMDetector",
+  "precision": 1.0,
+  "recall": 0.6,
+  "tp": 3,
+  "fp": 0,
+  "fn": 2,
+  "rows": [
+    {
+      "notebook": "bfill_gaps.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 0,
+      "seconds": 32.2,
+      "findings": []
+    },
+    {
+      "notebook": "bfill_gaps__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 10.3,
+      "findings": []
+    },
+    {
+      "notebook": "centered_rolling.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 1,
+      "seconds": 39.9,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "lookahead_shift",
+          "explanation": "rolling(9, center=True) uses 4 future bars; shift(1) still leaves 3-bar lookahead.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 2,
+            "old": "    smooth = prices.pct_change().rolling(9, center=True).mean()",
+            "new": "    smooth = prices.pct_change().rolling(9).mean()"
+          },
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "fixed_source": "def signal(prices):\n    \"\"\"Smooth daily returns over a 9-day window, then lag one bar.\"\"\"\n    smooth = prices.pct_change().rolling(9).mean()\n    return (smooth.shift(1) * 100).clip(-1, 1).fillna(0.0)\n",
+          "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-7g95vlh3/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "            equal = np.allclose(base_before.to_numpy(), pert_before.to_numpy(), equal_nan=True, atol=1e-12, rtol=1e-9)\n>           assert equal, \"INVARIANT_VIOLATED: signal/position at or before cutoff {} changed after perturbing future prices - lookahead bias (max diff={})\".format(cutoff, np.max(np.abs(base_before.to_numpy() - pert_before.to_numpy())))\nE           AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff 30 changed after perturbing future prices - lookahead bias (max diff=1.5120665751903286)\nE           assert False\n\ntests_generated/test_finding_1.py:19: AssertionError\n__________________ test_signal_lookahead_scaling_perturbation __________________\n\n    def test_signal_lookahead_scaling_perturbation():\n        prices = module_under_test.synthetic_prices()\n        cutoff = 55\n        base_signal = module_under_test.signal(prices)\n        perturbed = prices.copy()\n        perturbed.iloc[cutoff+1:] = perturbed.iloc[cutoff+1:] * 4.0 + 50.0\n        pert_signal = module_under_test.signal(perturbed)\n>       assert np.allclose(base_signal.iloc[:cutoff+1].to_numpy(), pert_signal.iloc[:cutoff+1].to_numpy(), equal_nan=True, atol=1e-12, rtol=1e-9), \"INVARIANT_VIOLATED: signal before cutoff changed after scaling future prices\"\nE       AssertionError: INVARIANT_VIOLATED: signal before cutoff changed after scaling future prices\nE       assert False\nE        +  where False = <function allclose at 0x107f1e730>(array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...73e-01,\\n        -6.53083815e-02],\\n       [-1.24843511e-01, -1.96980754e-01, -1.73609888e-01,\\n        -4.53009985e-01]]), array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...00e+00,\\n         1.00000000e+00],\\n       [ 1.00000000e+00,  1.00000000e+00,  1.00000000e+00,\\n         1.00000000e+00]]), equal_nan=True, atol=1e-12, rtol=1e-09)\nE        +    where <function allclose at 0x107f1e730> = np.allclose\nE        +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...73e-01,\\n        -6.53083815e-02],\\n       [-1.24843511e-01, -1.96980754e-01, -1.73609888e-01,\\n        -4.53009985e-01]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...571 -0.019973 -0.458184  0.143281\\n54 -0.061494 -0.119430 -0.504380 -0.065308\\n55 -0.124844 -0.196981 -0.173610 -0.453010.to_numpy\nE        +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...00e+00,\\n         1.00000000e+00],\\n       [ 1.00000000e+00,  1.00000000e+00,  1.00000000e+00,\\n         1.00000000e+00]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...000  1.000000  1.000000  1.000000\\n54  1.000000  1.000000  1.000000  1.000000\\n55  1.000000  1.000000  1.000000  1.000000.to_numpy\n\ntests_generated/test_finding_1.py:28: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_lookahead_invariance - ...\nFAILED tests_generated/test_finding_1.py::test_signal_lookahead_scaling_perturbation\n2 failed in 1.20s\nFIXED SOURCE TEST\n..                                                                       [100%]\n2 passed in 1.15s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 1.14s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 5.0,
+      "findings": []
+    },
+    {
+      "notebook": "scaler_fit_all.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 56.8,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "fullsample_leak",
+          "explanation": "StandardScaler().fit_transform(feats) fits mean/std on the entire history including future bars, leaking future information into past scaled features/positions.",
+          "severity": "medium",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 2,
+            "old": "    scaled = pd.DataFrame(StandardScaler().fit_transform(feats), index=feats.index, columns=feats.columns)",
+            "new": "    scaled = (feats - feats.expanding().mean().shift(1)) / feats.expanding().std().shift(1).fillna(1).replace(0, 1).fillna(0.0)"
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "from sklearn.preprocessing import StandardScaler\n\ndef signal(prices):\n    \"\"\"Standardize lagged features with sklearn, then average them into a score.\"\"\"\n    rets = prices.pct_change().shift(1)\n    feats = pd.concat({\"r5\": rets.rolling(5).mean(), \"v20\": rets.rolling(20).std()}, axis=1).fillna(0.0)\n    scaled = (feats - feats.expanding().mean().shift(1)) / feats.expanding().std().shift(1).fillna(1).replace(0, 1).fillna(0.0)\n    return (scaled[\"r5\"] - scaled[\"v20\"]).clip(-2, 2)\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-smbmzze1/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "_____________________ test_no_future_leak_signal_invariant _____________________\n\n    def test_no_future_leak_signal_invariant():\n        prices_orig = module_under_test.synthetic_prices()\n        # test multiple cutoffs to be robust\n        for cutoff in [30, 60, 90]:\n            prices_pert = prices_orig.copy()\n            # perturb all bars strictly after cutoff by a large multiplicative factor\n            # future returns/bars change, but past signals/positions must not\n            prices_pert.iloc[cutoff+1:] = prices_pert.iloc[cutoff+1:] * 10.0\n    \n            sig_orig = module_under_test.signal(prices_orig)\n            sig_pert = module_under_test.signal(prices_pert)\n    \n            # signals/positions are DataFrames (120,4); check invariance at or before cutoff inclusive\n            orig_slice = sig_orig.iloc[:cutoff+1]\n            pert_slice = sig_pert.iloc[:cutoff+1]\n            max_diff = np.abs(orig_slice.values - pert_slice.values).max()\n>           assert np.allclose(orig_slice.values, pert_slice.values, atol=1e-9, rtol=1e-6), f\"INVARIANT_VIOLATED: signal/position at or before cutoff {cutoff} changed after perturbing future prices. max_abs_diff={max_diff}\"\nE           AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff 30 changed after perturbing future prices. max_abs_diff=1.8562707885397907\nE           assert False\nE            +  where False = <function allclose at 0x111dd1df0>(array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.64059243, -0.67098056,  0.11322609, -0.41285375],\\n       [-0.85576212, -1.33591644,  1.40578936,  0.70476891]]), array([[0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n       [0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n    ...89],\\n       [0.21567836, 0.2326337 , 0.23859251, 0.23803125],\\n       [0.22606078, 0.22476999, 0.25685311, 0.25272043]]), atol=1e-09, rtol=1e-06)\nE            +    where <function allclose at 0x111dd1df0> = np.allclose\nE            +    and   array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.64059243, -0.67098056,  0.11322609, -0.41285375],\\n       [-0.85576212, -1.33591644,  1.40578936,  0.70476891]]) =            A         B         C         D\\n0   2.000000  2.000000  2.000000  2.000000\\n1   2.000000  2.000000  2.000000...279 -0.074156  0.030199  0.437807\\n29 -1.640592 -0.670981  0.113226 -0.412854\\n30 -0.855762 -1.335916  1.405789  0.704769.values\nE            +    and   array([[0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n       [0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n    ...89],\\n       [0.21567836, 0.2326337 , 0.23859251, 0.23803125],\\n       [0.22606078, 0.22476999, 0.25685311, 0.25272043]]) =            A         B         C         D\\n0   0.249940  0.254291  0.253780  0.253283\\n1   0.249940  0.254291  0.253780...436  0.239857  0.237912  0.249009\\n29  0.215678  0.232634  0.238593  0.238031\\n30  0.226061  0.224770  0.256853  0.252720.values\n\ntests_generated/test_finding_1.py:21: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_no_future_leak_signal_invariant\n1 failed in 4.28s\nFIXED SOURCE TEST\n_____________________ test_no_future_leak_signal_invariant _____________________\n\n    def test_no_future_leak_signal_invariant():\n        prices_orig = module_under_test.synthetic_prices()\n        # test multiple cutoffs to be robust\n        for cutoff in [30, 60, 90]:\n            prices_pert = prices_orig.copy()\n            # perturb all bars strictly after cutoff by a large multiplicative factor\n            # future returns/bars change, but past signals/positions must not\n            prices_pert.iloc[cutoff+1:] = prices_pert.iloc[cutoff+1:] * 10.0\n    \n            sig_orig = module_under_test.signal(prices_orig)\n            sig_pert = module_under_test.signal(prices_pert)\n    \n            # signals/positions are DataFrames (120,4); check invariance at or before cutoff inclusive\n            orig_slice = sig_orig.iloc[:cutoff+1]\n            pert_slice = sig_pert.iloc[:cutoff+1]\n            max_diff = np.abs(orig_slice.values - pert_slice.values).max()\n>           assert np.allclose(orig_slice.values, pert_slice.values, atol=1e-9, rtol=1e-6), f\"INVARIANT_VIOLATED: signal/position at or before cutoff {cutoff} changed after perturbing future prices. max_abs_diff={max_diff}\"\nE           AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff 30 changed after perturbing future prices. max_abs_diff=nan\nE           assert False\nE            +  where False = <function allclose at 0x10f3ca530>(array([[        nan,         nan,         nan,         nan],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-2.        , -2.        , -1.05195668, -1.47847919],\\n       [-1.91000549, -2.        , -0.09591186,  0.22614355]]), array([[        nan,         nan,         nan,         nan],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-2.        , -2.        , -1.05195668, -1.47847919],\\n       [-1.91000549, -2.        , -0.09591186,  0.22614355]]), atol=1e-09, rtol=1e-06)\nE            +    where <function allclose at 0x10f3ca530> = np.allclose\nE            +    and   array([[        nan,         nan,         nan,         nan],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-2.        , -2.        , -1.05195668, -1.47847919],\\n       [-1.91000549, -2.        , -0.09591186,  0.22614355]]) =            A         B         C         D\\n0        NaN       NaN       NaN       NaN\\n1   0.000000  0.000000  0.000000...000 -1.756425 -1.160107 -0.371492\\n29 -2.000000 -2.000000 -1.051957 -1.478479\\n30 -1.910005 -2.000000 -0.095912  0.226144.values\nE            +    and   array([[        nan,         nan,         nan,         nan],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-2.        , -2.        , -1.05195668, -1.47847919],\\n       [-1.91000549, -2.        , -0.09591186,  0.22614355]]) =            A         B         C         D\\n0        NaN       NaN       NaN       NaN\\n1   0.000000  0.000000  0.000000...000 -1.756425 -1.160107 -0.371492\\n29 -2.000000 -2.000000 -1.051957 -1.478479\\n30 -1.910005 -2.000000 -0.095912  0.226144.values\n\ntests_generated/test_finding_1.py:21: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_no_future_leak_signal_invariant\n1 failed in 3.24s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 3.26s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 15.6,
+      "findings": []
+    },
+    {
+      "notebook": "shuffled_split.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 1,
+      "seconds": 62.6,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 10,
+          "bug_class": "fullsample_leak",
+          "explanation": "train_test_split with default shuffle=True trains pooled regression on random future bars and predicts in-sample, leaking future information into early position estimates.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 2,
+            "old": "    X_train, X_test, y_train, y_test = train_test_split(data[[\"lag1\", \"lag5\"]], data[\"y\"], test_size=0.3, random_state=0)",
+            "new": "    X_train, X_test, y_train, y_test = train_test_split(data[[\"lag1\", \"lag5\"]], data[\"y\"], test_size=0.3, shuffle=False)"
+          },
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "fixed_source": "from sklearn.linear_model import LinearRegression\nfrom sklearn.model_selection import train_test_split\n\ndef signal(prices):\n    \"\"\"Fit one pooled linear model on lagged returns; trade the sign of its forecast.\"\"\"\n    rets = prices.pct_change()\n    X = pd.concat({\"lag1\": rets.shift(1).stack(), \"lag5\": rets.rolling(5).mean().shift(1).stack()}, axis=1)\n    y = rets.stack().reindex(X.index)\n    data = pd.concat([X, y.rename(\"y\")], axis=1).dropna()\n    X_train, X_test, y_train, y_test = train_test_split(data[[\"lag1\", \"lag5\"]], data[\"y\"], test_size=0.3, shuffle=False)\n    model = LinearRegression().fit(X_train, y_train)\n    pred = pd.Series(model.predict(X.fillna(0.0)), index=X.index).unstack()\n    return np.sign(pred).reindex(index=prices.index, columns=prices.columns).fillna(0.0)\n",
+          "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-j72lgzvb/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "            orig_signal = module_under_test.signal(prices)\n            pert_signal = module_under_test.signal(perturbed)\n            orig_slice = orig_signal.iloc[:cutoff+1]\n            pert_slice = pert_signal.iloc[:cutoff+1]\n            equal = orig_slice.equals(pert_slice)\n>           assert equal, f'INVARIANT_VIOLATED: signals at or before cutoff {cutoff} changed after perturbing future prices. diff sum={(orig_slice != pert_slice).sum().sum()}'\nE           AssertionError: INVARIANT_VIOLATED: signals at or before cutoff 90 changed after perturbing future prices. diff sum=284\nE           assert False\n\ntests_generated/test_finding_1.py:29: AssertionError\n___________________ test_position_invariance_simple_multiply ___________________\n\n    def test_position_invariance_simple_multiply():\n        prices = module_under_test.synthetic_prices()\n        cutoff = len(prices) - 30\n        perturbed = prices.copy()\n        perturbed.iloc[cutoff+1:] = perturbed.iloc[cutoff+1:] * 4.0 + 50.0\n        orig_signal = module_under_test.signal(prices)\n        pert_signal = module_under_test.signal(perturbed)\n>       assert orig_signal.iloc[:cutoff+1].equals(pert_signal.iloc[:cutoff+1]), 'INVARIANT_VIOLATED: simple multiply perturbation changed early signals (positions) before cutoff'\nE       AssertionError: INVARIANT_VIOLATED: simple multiply perturbation changed early signals (positions) before cutoff\nE       assert False\nE        +  where False = equals(      A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2   1.0  1.0  1.0  1.0\\n3   1.0  1.0  1.0  1.0\\n4  ... 1.0\\n87  1.0  1.0  1.0  1.0\\n88  1.0  1.0  1.0  1.0\\n89  1.0  1.0  1.0  1.0\\n90  1.0  1.0  1.0  1.0\\n\\n[91 rows x 4 columns])\nE        +    where equals =       A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2  -1.0 -1.0 -1.0 -1.0\\n3  -1.0 -1.0 -1.0 -1.0\\n4  ...-1.0\\n87 -1.0 -1.0 -1.0 -1.0\\n88 -1.0 -1.0 -1.0 -1.0\\n89 -1.0  1.0 -1.0 -1.0\\n90 -1.0  1.0 -1.0 -1.0\\n\\n[91 rows x 4 columns].equals\n\ntests_generated/test_finding_1.py:44: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_temporal_invariance - A...\nFAILED tests_generated/test_finding_1.py::test_position_invariance_simple_multiply\n2 failed in 4.01s\nFIXED SOURCE TEST\n..                                                                       [100%]\n2 passed in 3.73s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 3.73s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 11.4,
+      "findings": []
+    },
+    {
+      "notebook": "asof_forward.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 1,
+      "seconds": 58.5,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 11,
+          "bug_class": "lookahead_shift",
+          "explanation": "direction=\"forward\" in merge_asof attaches the next future announcement to each bar, so positions trade on not-yet-published trailing returns (lookahead). Must use direction=\"backward\" so only already-published announcements are used; the existing shift(1) then correctly delays execution to the next bar.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 2,
+            "old": "    merged = pd.merge_asof(bars, ann, on=\"t\", direction=\"forward\")",
+            "new": "    merged = pd.merge_asof(bars, ann, on=\"t\", direction=\"backward\")"
+          },
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "fixed_source": "def announcements(prices):\n    \"\"\"Every 10 bars an 'announcement' publishes the trailing 10-bar return.\"\"\"\n    dates = prices.index[10::10]\n    trailing = prices.pct_change(10).loc[dates]\n    return trailing.reset_index().rename(columns={\"index\": \"t\"})\n\ndef signal(prices):\n    \"\"\"Attach the relevant announcement to each bar and trade its sign.\"\"\"\n    ann = announcements(prices)\n    bars = pd.DataFrame({\"t\": prices.index})\n    merged = pd.merge_asof(bars, ann, on=\"t\", direction=\"backward\")\n    return (merged.set_index(\"t\")[prices.columns].shift(1) * 10).clip(-1, 1).fillna(0.0)\n",
+          "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-1csiz60w/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "            maxdiff = np.nanmax(np.abs(a.to_numpy(dtype=float) - b.to_numpy(dtype=float)))\n>           raise AssertionError(f'INVARIANT_VIOLATED: signals/positions at or before cutoff={cutoff} changed after perturbing future prices (maxdiff={maxdiff}); lookahead due to direction=\"forward\"')\nE           AssertionError: INVARIANT_VIOLATED: signals/positions at or before cutoff=33 changed after perturbing future prices (maxdiff=1.4697703438902145); lookahead due to direction=\"forward\"\n\ntests_generated/test_finding_1.py:17: AssertionError\n______________________ test_positions_backtest_invariant _______________________\n\n    def test_positions_backtest_invariant():\n        base = module_under_test.synthetic_prices()\n        cutoff = 55\n        pert = base.copy()\n        pert.iloc[cutoff+1:] = pert.iloc[cutoff+1:] * 2.5 + 100.0\n        sig_base = module_under_test.signal(base)\n        sig_pert = module_under_test.signal(pert)\n        a = sig_base.iloc[:cutoff+1]\n        b = sig_pert.iloc[:cutoff+1]\n>       assert np.allclose(a.values, b.values, rtol=1e-12, atol=1e-12, equal_nan=True), 'INVARIANT_VIOLATED: signal/position invariant failed - future perturbation affected past positions'\nE       AssertionError: INVARIANT_VIOLATED: signal/position invariant failed - future perturbation affected past positions\nE       assert False\nE        +  where False = <function allclose at 0x105f19d70>(array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 0.08735692, -0.20248309, -0.22652368, -0.65701228],\\n       [ 0.08735692, -0.20248309, -0.22652368, -0.65701228]]), array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 1.        ,  1.        ,  1.        ,  1.        ],\\n       [ 1.        ,  1.        ,  1.        ,  1.        ]]), rtol=1e-12, atol=1e-12, equal_nan=True)\nE        +    where <function allclose at 0x105f19d70> = np.allclose\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 0.08735692, -0.20248309, -0.22652368, -0.65701228],\\n       [ 0.08735692, -0.20248309, -0.22652368, -0.65701228]]) =            A         B         C         D\\nt                                         \\n0   0.000000  0.000000  0.000000...357 -0.202483 -0.226524 -0.657012\\n54  0.087357 -0.202483 -0.226524 -0.657012\\n55  0.087357 -0.202483 -0.226524 -0.657012.values\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 1.        ,  1.        ,  1.        ,  1.        ],\\n       [ 1.        ,  1.        ,  1.        ,  1.        ]]) =            A         B         C         D\\nt                                         \\n0   0.000000  0.000000  0.000000...000  1.000000  1.000000  1.000000\\n54  1.000000  1.000000  1.000000  1.000000\\n55  1.000000  1.000000  1.000000  1.000000.values\n\ntests_generated/test_finding_1.py:35: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_lookahead_signal_invariant_single_cutoff\nFAILED tests_generated/test_finding_1.py::test_lookahead_signal_invariant_multiple_cutoffs\nFAILED tests_generated/test_finding_1.py::test_positions_backtest_invariant\n3 failed in 1.66s\nFIXED SOURCE TEST\n...                                                                      [100%]\n3 passed in 1.19s",
+            "clean_sanity": "...                                                                      [100%]\n3 passed in 1.20s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 11.6,
+      "findings": []
+    },
+    {
+      "notebook": "decoy_forward_label.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 8.9,
+      "findings": []
+    },
+    {
+      "notebook": "decoy_fixed_params.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 5.3,
+      "findings": []
+    }
+  ]
+}

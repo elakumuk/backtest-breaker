@@ -1,0 +1,29 @@
+{
+  "run_id": "live-20261104T023249Z",
+  "model": "meta-models/muse-spark-open-1026",
+  "provider": "baseten",
+  "date": "2026-11-04",
+  "n_trials": 25,
+  "failed_trials": 0,
+  "first_trial_sharpe": 0.6397585432158589,
+  "median_trial_sharpe": 0.5567747004393728,
+  "in_sample_best_sharpe": 0.6798439616217803,
+  "best_trial_iter": 13,
+  "best_trial_cost_bps": 0.0,
+  "best_sharpe_at_10bps": 0.6489,
+  "predicted_holdout_sharpe": 0.32,
+  "prediction_rationale": "In-sample max 0.68 on 34y with mean 0.52 sd 0.17 across 25 correlated trials gives SR0 about 0.35 via DSR. Posterior shrinkage to mean plus 50 percent decay for selection bias costs and nonstationarity implies holdout about 0.32.",
+  "actual_holdout_sharpe": 0.30291640724093577,
+  "holdout_start": "2024-01-01",
+  "final_verdict": "FRAGILE",
+  "model_verdict": "SURVIVES",
+  "model_disagrees": true,
+  "grounded": true,
+  "verdict_reasons": [
+    "FRAGILE: DSR below 0.95",
+    "FRAGILE: holdout Sharpe below half in-sample"
+  ],
+  "research_total_tokens": 162882,
+  "research_total_latency_seconds": 161.2586,
+  "auditor_total_tokens": 12769
+}

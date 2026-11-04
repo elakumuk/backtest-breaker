@@ -1,0 +1,29 @@
+{
+  "detector": "LLMDetector",
+  "dismissed": [],
+  "findings": [
+    {
+      "bug_class": "fullsample_leak",
+      "cell_index": 1,
+      "detector": "LLMDetector",
+      "explanation": "signal() computes total_return over the entire sample (prod over axis=0) and masks lagged signals with positive_full_period = total_return > 0. This uses future information not available at signal time (universe-selection / full-sample lookahead). The shift(1) is correct but negated by conditioning on full-period outcome.",
+      "fix": {
+        "cell_index": 1,
+        "new": "    return returns.shift(1).fillna(0.0)",
+        "old": "    total_return = (1.0 + returns).prod(axis=0) - 1.0\n    positive_full_period = total_return > 0.0\n    return returns.shift(1).fillna(0.0).mul(positive_full_period.astype(float), axis=\"columns\")"
+      },
+      "fixed_source": "import numpy as np\nimport pandas as pd\n\ndef signal(prices):\n    \"\"\"Mask lagged signals using each asset's full-period total return.\"\"\"\n    returns = prices.pct_change().fillna(0.0)\n    return returns.shift(1).fillna(0.0)\n\ndef backtest(prices):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    return (positions * asset_returns).mean(axis=1)\n\ndef synthetic_prices():\n    rng = np.random.default_rng(42)\n    returns = rng.normal(0.001, 0.01, size=(120, 4))\n    return pd.DataFrame(100.0 * (1.0 + returns).cumprod(axis=0), columns=list(\"ABCD\"))\n",
+      "is_bug": true,
+      "line": 7,
+      "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+      "runner_stdout_tail": {
+        "candidate": "____________________ test_signal_invariant_multiple_cutoffs ____________________\n\n    def test_signal_invariant_multiple_cutoffs():\n        for cutoff in [30, 90]:\n            orig_prices = module_under_test.synthetic_prices()\n            pert_prices = orig_prices.copy()\n            n = len(orig_prices)\n            n_tail = n - cutoff - 1\n            for col in orig_prices.columns:\n                orig_total = orig_prices[col].iloc[-1] / orig_prices[col].iloc[0] - 1.0\n                initial = orig_prices[col].iloc[0]\n                anchor = orig_prices[col].iloc[cutoff]\n                desired_final = initial * (0.5 if orig_total > 0 else 2.0)\n                tail = np.linspace(anchor, desired_final, n_tail + 1)[1:]\n                pert_prices.iloc[cutoff+1:, pert_prices.columns.get_loc(col)] = tail\n            orig_signal = module_under_test.signal(orig_prices)\n            pert_signal = module_under_test.signal(pert_prices)\n>           assert np.allclose(orig_signal.iloc[:cutoff+1].values, pert_signal.iloc[:cutoff+1].values, equal_nan=True), f'INVARIANT_VIOLATED: signal invariant failed at cutoff {cutoff}'\nE           AssertionError: INVARIANT_VIOLATED: signal invariant failed at cutoff 30\nE           assert False\nE            +  where False = <function allclose at 0x10ecca1b0>(array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...08e-03,\\n        -4.29492709e-03],\\n       [ 3.32676211e-03,  0.00000000e+00,  1.70177889e-02,\\n        -1.39355627e-03]]), array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.        , -0.01346058,  0.        , -0.        ],\\n       [ 0.        ,  0.00121852,  0.        , -0.        ]]), equal_nan=True)\nE            +    where <function allclose at 0x10ecca1b0> = np.allclose\nE            +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...08e-03,\\n        -4.29492709e-03],\\n       [ 3.32676211e-03,  0.00000000e+00,  1.70177889e-02,\\n        -1.39355627e-03]]) =            A    B         C         D\\n0   0.000000  0.0  0.000000  0.000000\\n1   0.000000  0.0  0.000000  0.000000\\n2  -...02390\\n28  0.009403 -0.0  0.005344  0.003377\\n29 -0.004941 -0.0  0.001721 -0.004295\\n30  0.003327  0.0  0.017018 -0.001394.values\nE            +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.        , -0.01346058,  0.        , -0.        ],\\n       [ 0.        ,  0.00121852,  0.        , -0.        ]]) =       A         B    C    D\\n0   0.0  0.000000  0.0  0.0\\n1   0.0  0.000000  0.0  0.0\\n2  -0.0 -0.012022  0.0 -0.0\\n3   0.....0  0.0\\n27 -0.0 -0.001054 -0.0 -0.0\\n28  0.0 -0.016273  0.0  0.0\\n29 -0.0 -0.013461  0.0 -0.0\\n30  0.0  0.001219  0.0 -0.0.values\n\ntests_generated/test_finding_1.py:52: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_leak_invariant\nFAILED tests_generated/test_finding_1.py::test_signal_invariant_multiple_cutoffs\n2 failed in 1.47s\nFIXED SOURCE TEST\n..                                                                       [100%]\n2 passed in 1.09s",
+        "clean_sanity": "..                                                                       [100%]\n2 passed in 1.33s"
+      },
+      "severity": "high",
+      "status": "PROVEN"
+    }
+  ],
+  "notebook": "leaky_universe.ipynb",
+  "seconds": 55.2
+}

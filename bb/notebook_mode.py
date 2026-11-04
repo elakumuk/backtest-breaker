@@ -17,7 +17,7 @@ from typing import Any, Protocol
 
 import nbformat
 
-from bb.llm import chat
+from bb.llm import SchemaValidationError, chat
 
 logger = logging.getLogger(__name__)
 BUG_CLASSES = ("lookahead_shift", "fullsample_leak", "universe_selection", "no_costs", "multiple_testing")
@@ -35,11 +35,10 @@ FINDINGS_SCHEMA = {
                     "explanation": {"type": "string"},
                     "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
                     "is_bug": {"type": "boolean"},
-                    "fix": {"type": ["object", "null"], "properties": {
-                        "cell_index": {"type": "integer"}, "old": {"type": "string"}, "new": {"type": "string"}},
-                        "required": ["cell_index", "old", "new"], "additionalProperties": False},
+                    "fix_old": {"type": "string"},
+                    "fix_new": {"type": "string"},
                 },
-                "required": ["cell_index", "line", "bug_class", "explanation", "severity", "is_bug", "fix"],
+                "required": ["cell_index", "line", "bug_class", "explanation", "severity", "is_bug", "fix_old", "fix_new"],
                 "additionalProperties": False,
             },
         }
@@ -201,23 +200,39 @@ class LLMDetector:
             for idx, cell in enumerate(notebook.cells)
             if cell.cell_type == "code"
         ]
-        response = chat(
-            [
+        try:
+            response = chat(
+                [
                 {
                     "role": "system",
                     "content": (
                         "Audit notebook backtest code for bug classes: " + ", ".join(BUG_CLASSES)
                         + ". Report only real bugs. An empty findings list is a valid and expected answer for clean code. "
-                        "Return only JSON matching the supplied findings schema. Cite exact cell and line and give a minimal fix."
+                        "Return only JSON matching the supplied findings schema. Cite exact cell and line. "
+                        "fix_old must be copied verbatim from the cited cell and occur exactly once in it; "
+                        "fix_new is the smallest replacement that removes the bug."
                     ),
                 },
                 {"role": "user", "content": json.dumps(cells)},
-            ],
-            json_schema=FINDINGS_SCHEMA,
-        )
+                ],
+                json_schema=FINDINGS_SCHEMA,
+            )
+        except SchemaValidationError as exc:
+            logger.warning("Notebook model output did not match schema after retry: %s", exc)
+            return [{
+                "cell_index": 0, "line": 1, "bug_class": "lookahead_shift",
+                "explanation": "Model output did not match schema after one retry.",
+                "severity": "low", "is_bug": True, "fix": None,
+                "schema_error": True, "detector": self.name,
+            }]
         parsed = json.loads(response.content)
         findings = parsed.get("findings", [])
         for finding in findings:
+            finding["fix"] = {
+                "cell_index": finding["cell_index"],
+                "old": finding.pop("fix_old"),
+                "new": finding.pop("fix_new"),
+            }
             finding["detector"] = self.name
         return findings
 
@@ -348,7 +363,7 @@ def audit_notebook(
             cells = nbformat.read(path, as_version=4).cells
             fix = finding.get("fix")
             if not fix:
-                reason = "finding has no applicable fix"
+                reason = "model output did not match schema" if finding.get("schema_error") else "finding has no applicable fix"
                 raise ValueError(reason)
             fix_cell = fix.get("cell_index")
             if fix_cell != finding.get("cell_index") or not 0 <= fix_cell < len(cells) or cells[fix_cell].cell_type != "code":
@@ -392,8 +407,14 @@ def audit_notebook(
                         reason = "finding-specific fix did not pass invariant"
                 else:
                     reason = "test not specific: it failed or timed out on clean control"
+        except SchemaValidationError:
+            reason = "model output did not match schema"
         except Exception as exc:
-            reason = f"proof setup failed: {type(exc).__name__}: {exc}"
+            reason = (
+                "model output did not match schema"
+                if finding.get("schema_error")
+                else f"proof setup failed: {type(exc).__name__}: {exc}"
+            )
         finding.update(
             status=status,
             fixed_source=fixed_source,

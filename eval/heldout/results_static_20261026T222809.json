@@ -1,0 +1,490 @@
+{
+  "detector": "StaticDetector",
+  "precision": 0.625,
+  "recall": 1.0,
+  "tp": 5,
+  "fp": 3,
+  "fn": 0,
+  "rows": [
+    {
+      "notebook": "bfill_gaps.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 7.2,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u1fnoyyr/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "E       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 2 / 244 (0.82%)\nE       Mismatch at indices:\nE        [59, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE        [60, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE       Max absolute difference among violations: 0.22265237\nE       Max relative difference among violations: 1.11326184\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u1fnoyyr/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u1fnoyyr/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed, 4 warnings in 1.14s",
+            "clean_sanity": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u1fnoyyr/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 0.80s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yevou50e/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\ntests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yevou50e/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yevou50e/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 4 warnings in 0.78s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "bfill_gaps__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 3.9,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-vy04jqhw/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-vy04jqhw/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 0.84s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-8pfxqyfp/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-8pfxqyfp/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 0.78s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling.ipynb",
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 6.7,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-k3_e3ige/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 16 / 244 (6.56%)\nE       First 5 mismatches are at indices:\nE        [57, 0]: -0.15213773548076057 (ACTUAL), 1.0 (DESIRED)\nE        [57, 1]: -0.4226419867888064 (ACTUAL), 1.0 (DESIRED)\nE        [57, 2]: -0.09964499160445531 (ACTUAL), 1.0 (DESIRED)\nE        [57, 3]: -0.526844249972548 (ACTUAL), 1.0 (DESIRED)\nE        [58, 0]: -0.2998185007680084 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\nE        DESIRED: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.95s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.80s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-v8o8nal3/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 12 / 244 (4.92%)\nE       First 5 mismatches are at indices:\nE        [58, 0]: -0.2998185007680084 (ACTUAL), 1.0 (DESIRED)\nE        [58, 1]: -0.13336436507384156 (ACTUAL), 1.0 (DESIRED)\nE        [58, 2]: -0.10085394872392116 (ACTUAL), 1.0 (DESIRED)\nE        [58, 3]: -0.932196669904179 (ACTUAL), 1.0 (DESIRED)\nE        [59, 0]: -0.1729218606731944 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\nE        DESIRED: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.83s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.80s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 4.2,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-kcxaxg89/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.83s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-fhyjt0d5/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.89s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all.ipynb",
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 14.1,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-hfbxumrs/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 244 / 244 (100%)\nE       First 5 mismatches are at indices:\nE        [0, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE        [0, 1]: 2.0 (ACTUAL), 0.510677539145648 (DESIRED)\nE        [0, 2]: 2.0 (ACTUAL), 0.516209753177067 (DESIRED)\nE        [0, 3]: 2.0 (ACTUAL), 0.500685129548611 (DESIRED)\nE        [1, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE       Max absolute difference among violations: 1.82950382\nE       Max relative difference among violations: 1697.65720932\nE        ACTUAL: array([[ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],...\nE        DESIRED: array([[ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.94s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.36s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-jn6icj92/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 244 / 244 (100%)\nE       First 5 mismatches are at indices:\nE        [0, 0]: 2.0 (ACTUAL), 0.37419095356254767 (DESIRED)\nE        [0, 1]: 2.0 (ACTUAL), 0.40542578689258724 (DESIRED)\nE        [0, 2]: 2.0 (ACTUAL), 0.4053054658144877 (DESIRED)\nE        [0, 3]: 2.0 (ACTUAL), 0.409442045295996 (DESIRED)\nE        [1, 0]: 2.0 (ACTUAL), 0.37419095356254767 (DESIRED)\nE       Max absolute difference among violations: 1.98255207\nE       Max relative difference among violations: 10573.66793154\nE        ACTUAL: array([[ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],...\nE        DESIRED: array([[ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],\nE              [ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],\nE              [ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.34s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.36s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 7.1,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-1cbh46ho/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.29s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-htlfy5lf/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.31s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split.ipynb",
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 15.5,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-92_zx0b6/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 173 / 244 (70.9%)\nE       First 5 mismatches are at indices:\nE        [2, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 1]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 2]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 3]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [3, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.,  0.,  0.,  0.],\nE              [ 0.,  0.,  0.,  0.],\nE              [-1., -1., -1., -1.],...\nE        DESIRED: array([[0., 0., 0., 0.],\nE              [0., 0., 0., 0.],\nE              [1., 1., 1., 1.],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 3.52s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.65s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-1hda4w_5/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 173 / 244 (70.9%)\nE       First 5 mismatches are at indices:\nE        [2, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 1]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 2]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 3]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [3, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.,  0.,  0.,  0.],\nE              [ 0.,  0.,  0.,  0.],\nE              [-1., -1., -1., -1.],...\nE        DESIRED: array([[0., 0., 0., 0.],\nE              [0., 0., 0., 0.],\nE              [1., 1., 1., 1.],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.74s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.56s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 7.6,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-q34z5qbw/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.58s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-vgjtobqg/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.49s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 5.3,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-bhd7iq1y/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 36 / 244 (14.8%)\nE       First 5 mismatches are at indices:\nE        [52, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE        [52, 1]: -0.20248309420110355 (ACTUAL), 1.0 (DESIRED)\nE        [52, 2]: -0.22652367521877714 (ACTUAL), 1.0 (DESIRED)\nE        [52, 3]: -0.6570122826885028 (ACTUAL), 1.0 (DESIRED)\nE        [53, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 1.65701228\nE       Max relative difference among violations: 1.65701228\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.82s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.79s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-sp21mupr/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.82s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 3.9,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-sc9o18_i/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.78s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-9okq_cng/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.79s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "decoy_forward_label.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 3.8,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5n9qvj1m/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.76s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-daoeil71/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.77s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "decoy_fixed_params.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 3.9,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 2,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ybs4l6_3/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.78s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-zxbn8upi/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.85s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    }
+  ]
+}

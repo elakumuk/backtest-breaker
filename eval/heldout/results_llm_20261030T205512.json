@@ -1,0 +1,239 @@
+{
+  "detector": "LLMDetector",
+  "precision": 0.0,
+  "recall": 0.0,
+  "tp": 0,
+  "fp": 0,
+  "fn": 5,
+  "rows": [
+    {
+      "notebook": "bfill_gaps.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 30.4,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "fullsample_leak",
+          "explanation": "Alternative label: lookahead_shift.",
+          "severity": "low",
+          "is_bug": true,
+          "fix": {
+            "minimal": "prices.ffill() is actually correct.",
+            "evidence": "filled = prices.bfill() uses next valid price at index 5 to fill NaNs at 3,4, peeking 1-2 bars ahead; stale quotes must be forward-filled.",
+            "description": "filled = prices.bfill() fills NaN with future price, leaking future information into momentum. For stale/missing quotes use ffill not bfill.",
+            "cell": 2,
+            "line_number": 3,
+            "line_text": "filled = prices.bfill()",
+            "bug_type": "fullsample_leak",
+            "fix_code": "filled = prices.ffill()  # or prices.ffill().bfill() if leading NaNs possible",
+            "citation": "cell 2 line 3: filled = prices.bfill()",
+            "note_other_classes_clean": "lookahead_shift SHIFT is correctly handled via .shift(1) in signal, no extra shift needed; no_costs correctly applied via turnover*cost_bps; universe_selection not present (fixed ABCD universe); multiple_testing not present (single sharpe)"
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": null,
+          "reason": "proof setup failed: ValueError: fix does not target the cited code cell",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-32duugyn/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "bfill_gaps__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 11.7,
+      "findings": []
+    },
+    {
+      "notebook": "centered_rolling.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 8.9,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "lookahead_shift",
+          "explanation": "rolling(9, center=True) uses 4 future bars (t-4..t+4). shift(1) only moves window to t-5..t+3, so positions at t still incorporate future returns t+1..t+3.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "line": 3,
+            "from": "smooth = prices.pct_change().rolling(9, center=True).mean()",
+            "to": "smooth = prices.pct_change().rolling(9).mean()",
+            "rationale": "Use trailing-only window (center=False default) so shift(1) guarantees positions[t] uses only info <= t-1."
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": null,
+          "reason": "proof setup failed: ValueError: fix does not target the cited code cell",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-qo9uadl6/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 7.3,
+      "findings": []
+    },
+    {
+      "notebook": "scaler_fit_all.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 16.8,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "fullsample_leak",
+          "explanation": "StandardScaler().fit_transform(feats) fits mean/std on the entire feats history including future rows, then applies it to past rows. This leaks future information into past signals even though rets was correctly lagged with shift(1).",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "original": "    scaled = pd.DataFrame(StandardScaler().fit_transform(feats), index=feats.index, columns=feats.columns)",
+            "replacement": "    # past-only standardization to avoid full-sample leak\n    m = feats.expanding(min_periods=20).mean().shift(1)\n    s = feats.expanding(min_periods=20).std().shift(1)\n    scaled = (feats - m) / s\n    scaled = scaled.fillna(0.0)"
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": null,
+          "reason": "proof setup failed: ValueError: fix does not target the cited code cell",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-fzh5uoyk/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 22.3,
+      "findings": []
+    },
+    {
+      "notebook": "shuffled_split.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 16.5,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 10,
+          "bug_class": "fullsample_leak",
+          "explanation": "train_test_split with shuffle=True (default) creates a random 70/30 split over the stacked panel (time x ticker). Training set therefore contains observations from future dates relative to many prediction dates. Line 12 then predicts on full X using a model fitted on future data and backtest in cell 3 evaluates P&L over the entire history, including periods that were in the training future.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "minimal": "Use chronological split and evaluate only out-of-sample, e.g.: data=data.sort_index(); split=int(len(data)*0.7); X_train,y_train=data[['lag1','lag5']].iloc[:split], data['y'].iloc[:split]; model.fit(X_train,y_train); pred_test=model.predict(data[['lag1','lag5']].iloc[split:]); or replace with train_test_split(..., shuffle=False) and backtest only on test dates with walk-forward/expanding window.",
+            "alternative": []
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": null,
+          "reason": "proof setup failed: ValueError: fix does not target the cited code cell",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-6otj6e_a/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 8.8,
+      "findings": []
+    },
+    {
+      "notebook": "asof_forward.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 1,
+      "seconds": 16.5,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 11,
+          "bug_class": "lookahead_shift",
+          "explanation": "pd.merge_asof(bars, ann, on=\"t\", direction=\"forward\") assigns the next future announcement to each bar. Bars before an announcement (e.g., t=0-9 get announcement at t=10) trade on information not yet published. The subsequent .shift(1) only delays by one bar and does not remove the leak.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "old_code": "merged = pd.merge_asof(bars, ann, on=\"t\", direction=\"forward\")",
+            "new_code": "merged = pd.merge_asof(bars, ann, on=\"t\", direction=\"backward\")",
+            "note": "With direction=\"backward\" the existing .shift(1) correctly trades the announcement on the bar after publication. No other leak (fullsample_leak, universe_selection, no_costs, multiple_testing) is present: trailing return is local, universe is fixed ABCD, costs are modeled via turnover*cost_bps, and no hyperparameter search is performed."
+          },
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "fixed_source": null,
+          "reason": "proof setup failed: ValueError: fix does not target the cited code cell",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-p3u23pjp/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 7.8,
+      "findings": []
+    },
+    {
+      "notebook": "decoy_forward_label.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 5.7,
+      "findings": []
+    },
+    {
+      "notebook": "decoy_fixed_params.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 8.0,
+      "findings": []
+    }
+  ]
+}

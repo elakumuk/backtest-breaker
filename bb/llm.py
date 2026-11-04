@@ -11,9 +11,23 @@ from dataclasses import dataclass
 from typing import Any
 
 from dotenv import load_dotenv
+from jsonschema import ValidationError, validate
 
 logger = logging.getLogger(__name__)
 load_dotenv()
+
+
+class SchemaValidationError(ValueError):
+    """A structured model response remained invalid after one correction retry."""
+
+
+def _validate_content(content: str, schema: dict[str, Any]) -> None:
+    """Parse and validate a JSON response against its requested schema."""
+    try:
+        payload = json.loads(content)
+        validate(instance=payload, schema=schema)
+    except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+        raise SchemaValidationError(str(exc)) from exc
 
 
 @dataclass(frozen=True)
@@ -113,6 +127,8 @@ def chat(
 ) -> LLMResponse:
     """Send a chat request through the configured provider, retrying transient errors."""
     provider = os.getenv("PROVIDER", "mock").strip().lower()
+    if os.getenv("BB_DEMO_MODE") == "1" and provider != "mock":
+        raise RuntimeError("Demo mode is offline: real LLM providers are disabled")
     if provider not in {"mock", "meta", "baseten", "fireworks"}:
         raise ValueError(f"Unsupported PROVIDER: {provider}")
     model = os.getenv(f"{provider.upper()}_MODEL", "mock-v1") if provider != "mock" else "mock-v1"
@@ -129,6 +145,8 @@ def chat(
             prompt = next((str(m.get("content", "")) for m in reversed(messages) if m.get("role") == "user"), "")
             content = "Mock response" if not prompt else f"Mock response: {prompt[:120]}"
         response = LLMResponse(content, model, provider, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, calls if mock_policy and mock_policy.get("kind") == "auditor" else [], finish_reason if mock_policy and mock_policy.get("kind") == "auditor" else "stop")
+        if json_schema is not None and not response.tool_calls:
+            _validate_content(response.content, json_schema)
         logger.info("llm provider=%s model=%s usage=%s", provider, model, response.usage)
         return response
     if provider == "meta":
@@ -148,12 +166,26 @@ def chat(
     if tools is not None:
         request["tools"] = tools
     last_error: Exception | None = None
+    validation_retried = False
     for attempt in range(3):
         try:
             result = client.chat.completions.create(**request)
             usage = result.usage.model_dump() if result.usage else {}
             message = result.choices[0].message
             content = message.content or ""
+            # A tool-call turn carries no final JSON yet; validate only final answers.
+            if json_schema is not None and not message.tool_calls:
+                try:
+                    _validate_content(content, json_schema)
+                except SchemaValidationError as exc:
+                    if validation_retried:
+                        raise
+                    validation_retried = True
+                    request["messages"] = [
+                        *messages,
+                        {"role": "user", "content": f"Your previous JSON failed client-side schema validation: {exc}. Return corrected JSON matching the schema exactly."},
+                    ]
+                    continue
             calls = []
             arguments_error = None
             for call in (message.tool_calls or []):
@@ -166,6 +198,8 @@ def chat(
                 calls.append({"id": call.id, "name": call.function.name, "arguments": arguments})
             logger.info("llm provider=%s model=%s usage=%s", provider, model, usage)
             return LLMResponse(content, model, provider, usage, calls, result.choices[0].finish_reason, arguments_error)
+        except SchemaValidationError:
+            raise
         except Exception as exc:  # SDK errors may include transient network/server faults.
             last_error = exc
             if attempt == 2:

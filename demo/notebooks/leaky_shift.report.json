@@ -1,0 +1,29 @@
+{
+  "detector": "LLMDetector",
+  "dismissed": [],
+  "findings": [
+    {
+      "bug_class": "lookahead_shift",
+      "cell_index": 1,
+      "detector": "LLMDetector",
+      "explanation": "positions derived from current-bar return is multiplied by same-bar asset_returns without lag, using contemporaneous information (lookahead).",
+      "fix": {
+        "cell_index": 1,
+        "new": "    positions = signal(prices).shift(1).fillna(0.0)",
+        "old": "    positions = signal(prices)"
+      },
+      "fixed_source": "import numpy as np\nimport pandas as pd\n\ndef signal(prices):\n    \"\"\"Incorrectly use each bar's return as its own position signal.\"\"\"\n    return prices.pct_change().fillna(0.0)\n\ndef backtest(prices):\n    positions = signal(prices).shift(1).fillna(0.0)\n    asset_returns = prices.pct_change().fillna(0.0)\n    return (positions * asset_returns).mean(axis=1)\n\ndef synthetic_prices():\n    rng = np.random.default_rng(42)\n    returns = rng.normal(0.001, 0.01, size=(120, 4))\n    return pd.DataFrame(100.0 * (1.0 + returns).cumprod(axis=0), columns=list(\"ABCD\"))\n",
+      "is_bug": true,
+      "line": 9,
+      "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+      "runner_stdout_tail": {
+        "candidate": ".F                                                                       [100%]\n=================================== FAILURES ===================================\n__________________ test_position_no_same_bar_lookahead_shift ___________________\n\n    def test_position_no_same_bar_lookahead_shift():\n        prices = module_under_test.synthetic_prices()\n        cutoff = 60\n        perturbed = prices.copy()\n        perturbed.iloc[cutoff:] = perturbed.iloc[cutoff:] * 1.5\n        orig_pos = _effective_positions(prices)\n        pert_pos = _effective_positions(perturbed)\n        orig_slice = orig_pos.iloc[:cutoff+1].values\n        pert_slice = pert_pos.iloc[:cutoff+1].values\n>       assert np.allclose(orig_slice, pert_slice, equal_nan=True), \"INVARIANT_VIOLATED: positions at or before cutoff changed after perturbing prices at/after cutoff - same-bar lookahead (missing shift(1).fillna(0.0))\"\nE       AssertionError: INVARIANT_VIOLATED: positions at or before cutoff changed after perturbing prices at/after cutoff - same-bar lookahead (missing shift(1).fillna(0.0))\nE       assert False\nE        +  where False = <function allclose at 0x1064aa270>(array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [-1.85103519e-02, -1.20217...12e-03,\\n        -4.29439427e-03],\\n       [-7.76860778e-03,  5.73744575e-05, -1.65772839e-02,\\n        -1.36704525e-02]]), array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [-1.85103519e-02, -1.20217...12e-03,\\n        -4.29439427e-03],\\n       [ 4.88347088e-01,  5.00086062e-01,  4.75134074e-01,\\n         4.79494321e-01]]), equal_nan=True)\nE        +    where <function allclose at 0x1064aa270> = np.allclose\n\ntests_generated/test_finding_1.py:41: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_position_no_same_bar_lookahead_shift\n1 failed, 1 passed in 1.45s\nFIXED SOURCE TEST\n..                                                                       [100%]\n2 passed in 1.10s",
+        "clean_sanity": "..                                                                       [100%]\n2 passed in 1.14s"
+      },
+      "severity": "high",
+      "status": "PROVEN"
+    }
+  ],
+  "notebook": "leaky_shift.ipynb",
+  "seconds": 60.2
+}

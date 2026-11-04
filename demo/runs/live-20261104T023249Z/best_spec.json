@@ -1,0 +1,1 @@
+{"name":"Aggressive Momentum 210-21 Top8 Monthly Zero-Cost In-Sample Max #13","signal_type":"momentum","lookback_days":210,"skip_days":21,"top_n":8,"rebalance":"M","long_short":false,"cost_bps":0.0,"start":"1990-01-01","end":"2023-12-31"}

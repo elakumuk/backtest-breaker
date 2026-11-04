@@ -1,0 +1,789 @@
+{
+  "detector": "LLMDetector",
+  "precision": 0.29411764705882354,
+  "recall": 1.0,
+  "tp": 5,
+  "fp": 12,
+  "fn": 0,
+  "rows": [
+    {
+      "notebook": "bfill_gaps.ipynb",
+      "tp": 1,
+      "fp": 4,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 191.1,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "lookahead_shift",
+          "explanation": "cell_index 2 line 3 'filled = prices.bfill()' uses backward-fill to populate missing quotes for asset C (40% NaN via index%5>=3 in cell 1 line 8). bfill propagates future prices (t+1/t+2) backwards into time t, then line 4 'momentum = filled.pct_change(10).shift(1)' computes signal on future-informed series. This is lookahead bias; shift(1) does not cure it because fill already peeked. Fix: use ffill() not bfill(), or drop/forward-fill only.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-wie_arf6/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "        perturbed = prices.copy()\n        perturbed.iloc[cutoff+1 :] = perturbed.iloc[cutoff+1 :] * 7.0 + 2000.0\n        new_positions = module_under_test.signal(perturbed)\n        # positions are defined as signal(prices) inside backtest; invariance must hold\n        orig_slice = orig_positions.iloc[:cutoff+1]\n        new_slice = new_positions.iloc[:cutoff+1]\n        equal = np.allclose(orig_slice.values, new_slice.values, equal_nan=True, rtol=1e-12, atol=1e-12)\n>       assert equal, f\"INVARIANT_VIOLATED: positions (signal) at or before cutoff {cutoff} changed after future-only perturbation; indicates lookahead bias from bfill\"\nE       AssertionError: INVARIANT_VIOLATED: positions (signal) at or before cutoff 64 changed after future-only perturbation; indicates lookahead bias from bfill\nE       assert False\n\ntests_generated/test_finding_1.py:37: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_1.py::test_signal_lookahead_invariance\ntests_generated/test_finding_1.py::test_signal_lookahead_invariance\ntests_generated/test_finding_1.py::test_positions_lookahead_invariance_via_backtest\ntests_generated/test_finding_1.py::test_positions_lookahead_invariance_via_backtest\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-wie_arf6/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-wie_arf6/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_lookahead_invariance - ...\nFAILED tests_generated/test_finding_1.py::test_positions_lookahead_invariance_via_backtest\n2 failed, 6 warnings in 1.74s",
+            "clean_sanity": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-wie_arf6/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 1 warning in 0.79s"
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 1,
+          "bug_class": "fullsample_leak",
+          "explanation": "No bug. No full-sample statistic used for signal construction: clip bounds are fixed -0.2/0.2 (cell 2 line 5), lag is fixed 10, and sharpe in cell 3 lines 8-10 is post-hoc evaluation only, not used for position sizing/normalization. No z-score/regression over entire history.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yri239a7/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "            before_pos_pert = pos_pert.iloc[:cutoff+1]\n            ok_pos = np.allclose(before_pos_orig.values, before_pos_pert.values, atol=1e-12, equal_nan=True)\n>           assert ok_pos, f'INVARIANT_VIOLATED: positions (signal) at or before cutoff={cutoff} changed after future perturbation'\nE           AssertionError: INVARIANT_VIOLATED: positions (signal) at or before cutoff=19 changed after future perturbation\nE           assert False\n\ntests_generated/test_finding_2.py:36: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26: 1 warning\ntests_generated/test_finding_2.py: 28 warnings\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yri239a7/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\ntests_generated/test_finding_2.py::test_backtest_positions_future_invariant\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yri239a7/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_signal_future_invariant - Asse...\nFAILED tests_generated/test_finding_2.py::test_backtest_positions_future_invariant\n2 failed, 38 warnings in 1.92s",
+            "clean_sanity": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35: 1 warning\ntests_generated/test_finding_2.py: 190 warnings\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yri239a7/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 191 warnings in 2.36s"
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 1,
+          "bug_class": "universe_selection",
+          "explanation": "No bug. Universe is fixed synthetic ABCD (cell 1 line 7) with random returns (cell 1 lines 5-6). No filtering on future performance, survivorship, or listing/delisting; cell 3 line 4 mean(axis=1) equally weights fixed universe without ex-post selection.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5hzfr8zj/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "        orig_sig = module_under_test.signal(base)\n        pert_sig = module_under_test.signal(perturbed)\n        # invariance before cutoff\n>       assert np.allclose(orig_sig.iloc[:cutoff+1].values, pert_sig.iloc[:cutoff+1].values, atol=1e-12, equal_nan=True), \"INVARIANT_VIOLATED: positions at or before cutoff must be invariant to future price perturbation\"\nE       AssertionError: INVARIANT_VIOLATED: positions at or before cutoff must be invariant to future price perturbation\nE       assert False\nE        +  where False = <function allclose at 0x108dadf30>(array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354, -0.02836365, -0.09744206]]), array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354,  0.2       , -0.09744206]]), atol=1e-12, equal_nan=True)\nE        +    where <function allclose at 0x108dadf30> = np.allclose\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354, -0.02836365, -0.09744206]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000... -0.071554\\n63 -0.034556 -0.035359 -0.047790 -0.086657\\n64  0.000614 -0.009754 -0.028364 -0.097442\\n\\n[65 rows x 4 columns].values\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354,  0.2       , -0.09744206]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000... -0.071554\\n63 -0.034556 -0.035359 -0.047790 -0.086657\\n64  0.000614 -0.009754  0.200000 -0.097442\\n\\n[65 rows x 4 columns].values\n\ntests_generated/test_finding_3.py:45: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_3.py::test_signal_no_lookahead_bfill_invariant\ntests_generated/test_finding_3.py::test_signal_no_lookahead_bfill_invariant\ntests_generated/test_finding_3.py::test_backtest_positions_invariant_to_future\ntests_generated/test_finding_3.py::test_backtest_positions_invariant_to_future\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5hzfr8zj/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5hzfr8zj/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_3.py::test_signal_no_lookahead_bfill_invariant\nFAILED tests_generated/test_finding_3.py::test_backtest_positions_invariant_to_future\n2 failed, 6 warnings in 1.75s",
+            "clean_sanity": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35: 1 warning\ntests_generated/test_finding_3.py: 12 warnings\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5hzfr8zj/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 13 warnings in 0.91s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "No bug - costs are modeled. Cell 3 line 5 computes turnover = positions.diff().abs().sum(axis=1) and line 6 deducts 'turnover * cost_bps / 10_000' with default cost_bps=10 (cell 3 line 1). Gross PnL is net of transaction costs; not a no-costs backtest. Note sum vs mean scaling is off by N=4 but costs are present.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ly5epdr3/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "E       assert False\nE        +  where False = <function allclose at 0x110ee2bb0>(array([ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n        0.00000000e+00,  0.00000000e+00,  0...3755e-04, -3.22868636e-04,  2.20358789e-04,\\n       -2.42700212e-05, -1.83769467e-04, -8.05967474e-05,  3.83339420e-05]), array([ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n        0.00000000e+00,  0.00000000e+00,  0...3755e-04, -3.22868636e-04,  2.20358789e-04,\\n       -2.42700212e-05, -1.83769467e-04, -8.05967474e-05, -1.84318425e-04]), equal_nan=True)\nE        +    where <function allclose at 0x110ee2bb0> = np.allclose\nE        +    and   array([ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n        0.00000000e+00,  0.00000000e+00,  0...3755e-04, -3.22868636e-04,  2.20358789e-04,\\n       -2.42700212e-05, -1.83769467e-04, -8.05967474e-05,  3.83339420e-05]) = 0     0.000000\\n1     0.000000\\n2     0.000000\\n3     0.000000\\n4     0.000000\\n5     0.000000\\n6     0.000000\\n7     0.00000...53   -0.000336\\n54   -0.000323\\n55    0.000220\\n56   -0.000024\\n57   -0.000184\\n58   -0.000081\\n59    0.000038\\ndtype: float64.values\nE        +    and   array([ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n        0.00000000e+00,  0.00000000e+00,  0...3755e-04, -3.22868636e-04,  2.20358789e-04,\\n       -2.42700212e-05, -1.83769467e-04, -8.05967474e-05, -1.84318425e-04]) = 0     0.000000\\n1     0.000000\\n2     0.000000\\n3     0.000000\\n4     0.000000\\n5     0.000000\\n6     0.000000\\n7     0.00000...53   -0.000336\\n54   -0.000323\\n55    0.000220\\n56   -0.000024\\n57   -0.000184\\n58   -0.000081\\n59   -0.000184\\ndtype: float64.values\n\ntests_generated/test_finding_4.py:32: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_4.py::test_signal_positions_invariant_to_future\ntests_generated/test_finding_4.py::test_signal_positions_invariant_to_future\ntests_generated/test_finding_4.py::test_signal_invariant_across_cutoffs\ntests_generated/test_finding_4.py::test_signal_invariant_across_cutoffs\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ly5epdr3/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ly5epdr3/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_4.py::test_signal_positions_invariant_to_future\nFAILED tests_generated/test_finding_4.py::test_signal_invariant_across_cutoffs\nFAILED tests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\n3 failed, 10 warnings in 1.71s",
+            "clean_sanity": "...                                                                      [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\ntests_generated/test_finding_4.py::test_backtest_pnl_prefix_invariant\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ly5epdr3/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n3 passed, 3 warnings in 0.79s"
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 1,
+          "bug_class": "multiple_testing",
+          "explanation": "No bug. Single deterministic configuration executed once: synthetic_prices() seed 7, 10-day momentum, fixed clip, single sharpe print (cell 3 line 12). No parameter grid, loop, optimization, or max-Sharpe selection across trials requiring correction; no p-hacking evidence in notebook.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-i4a6084l/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "E        +    where <function allclose at 0x10fb420f0> = np.allclose\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354, -0.02836365, -0.09744206]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000... -0.071554\\n63 -0.034556 -0.035359 -0.047790 -0.086657\\n64  0.000614 -0.009754 -0.028364 -0.097442\\n\\n[65 rows x 4 columns].to_numpy\nE        +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-0.03455609, -0.035359  , -0.04779005, -0.08665654],\\n       [ 0.00061373, -0.00975354,  0.2       , -0.09744206]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000... -0.071554\\n63 -0.034556 -0.035359 -0.047790 -0.086657\\n64  0.000614 -0.009754  0.200000 -0.097442\\n\\n[65 rows x 4 columns].to_numpy\n\ntests_generated/test_finding_5.py:40: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_5.py::test_signal_no_future_lookahead\ntests_generated/test_finding_5.py::test_signal_no_future_lookahead\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\ntests_generated/test_finding_5.py::test_positions_invariant_single_cutoff\ntests_generated/test_finding_5.py::test_positions_invariant_single_cutoff\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-i4a6084l/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-i4a6084l/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_5.py::test_signal_no_future_lookahead - A...\nFAILED tests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\nFAILED tests_generated/test_finding_5.py::test_positions_invariant_single_cutoff\n3 failed, 10 warnings in 0.85s",
+            "clean_sanity": "...                                                                      [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\ntests_generated/test_finding_5.py::test_backtest_pnl_no_future_lookahead\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-i4a6084l/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n3 passed, 3 warnings in 0.79s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "bfill_gaps__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 138.0,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 4,
+          "bug_class": "lookahead_shift",
+          "explanation": "No bug - signal correctly lagged. filled.pct_change(10).shift(1) makes positions[t] use price[t-1]/price[t-11]-1, multiplied in Cell3 L4 by asset_returns[t]=price[t]/price[t-1]-1. ffill in Cell2 L3 is past-only, not bfill/lookahead.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-7u72f37x/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-7u72f37x/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 1 warning in 1.76s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 5,
+          "bug_class": "fullsample_leak",
+          "explanation": "No bug - no full-sample statistic. clip(-0.2,0.2).fillna(0.0) uses constants, no mean/std/threshold computed over full history and applied retroactively.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u6iwzc2t/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-u6iwzc2t/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 1 warning in 0.95s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 8,
+          "bug_class": "universe_selection",
+          "explanation": "No bug under strict definition - universe ABCD is fixed synthetic, no ex-post selection on winners/survivors. Note tradability bias outside taxonomy: Cell1 L8 creates stale NaN for C, Cell2 L3 ffill keeps signal alive, Cell3 L3 asset_returns=pct_change().fillna(0.0) zeros the gap return (loses price jump from NaN->valid), Cell3 L4 .mean(axis=1) includes non-tradable bars as if tradable. Under broad tradability=universe_selection this would be flagged at Cell2 L3 and Cell3 L3-L4.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-net9ek9l/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\ntests_generated/test_finding_3.py::test_signal_and_backtest_no_future_leakage\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-net9ek9l/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 7 warnings in 1.07s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "No bug - costs included: turnover=positions.diff().abs().sum() in Cell3 L5 subtracted as turnover*cost_bps/10000 in Cell3 L6 with cost_bps=10. Note scaling mismatch: gross is mean across 4 assets (Cell3 L4) while turnover is sum (Cell3 L5) so cost is 4x mean-scaled; tradability also biases turnover, but not omitted.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-gxw8xa8d/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-gxw8xa8d/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 0.97s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 12,
+          "bug_class": "multiple_testing",
+          "explanation": "No bug - single evaluation print(round(sharpe(backtest(synthetic_prices())),3)) with fixed 10-day momentum, no loop over parameters/universes or best-Sharpe selection without correction.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-o8vygz35/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\ntests_generated/test_finding_5.py::test_signal_lookahead_invariance\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-o8vygz35/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 7 warnings in 0.94s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling.ipynb",
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 67.2,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "lookahead_shift",
+          "explanation": "rolling(9, center=True) includes 4 future bars. After .shift(1) the signal at t still averages pct_change[t-5:t+3], i.e. peeks 3 days ahead. Execution in cell 3 line 4 does gross=(positions*asset_returns).mean(axis=1) on same bar t, so positions[t] trades on information up to t+3.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-wcloexb7/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "E        +    where <function allclose at 0x10d65a0b0> = np.allclose\nE        +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...74e-01,\\n        -1.00000000e+00],\\n       [ 3.76598622e-02, -1.13395166e-01, -6.10556287e-01,\\n        -9.32424230e-01]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000... -0.932197\\n59 -0.172922 -0.114540 -0.568952 -1.000000\\n60  0.037660 -0.113395 -0.610556 -0.932424\\n\\n[61 rows x 4 columns].values\nE        +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...00e+00,\\n         1.00000000e+00],\\n       [ 1.00000000e+00,  1.00000000e+00,  1.00000000e+00,\\n         1.00000000e+00]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...  1.000000\\n59  1.000000  1.000000  1.000000  1.000000\\n60  1.000000  1.000000  1.000000  1.000000\\n\\n[61 rows x 4 columns].values\n\ntests_generated/test_finding_1.py:24: AssertionError\n____________________ test_signal_invariant_multiple_cutoffs ____________________\n\n    def test_signal_invariant_multiple_cutoffs():\n        prices = module_under_test.synthetic_prices()\n        for cutoff in [30, 60, 90]:\n            perturbed = prices.copy()\n            perturbed.iloc[cutoff+1:] *= 5.0\n            sig_orig = module_under_test.signal(prices)\n            sig_pert = module_under_test.signal(perturbed)\n            before_orig = sig_orig.iloc[:cutoff+1]\n            before_pert = sig_pert.iloc[:cutoff+1]\n            max_diff = (before_orig - before_pert).abs().max().max()\n>           assert np.allclose(before_orig.values, before_pert.values, atol=1e-12, rtol=0), f\"INVARIANT_VIOLATED: cutoff {cutoff} max_diff={max_diff} signals before cutoff must not depend on future prices\"\nE           AssertionError: INVARIANT_VIOLATED: cutoff 30 max_diff=1.7720711415840038 signals before cutoff must not depend on future prices\nE           assert False\nE            +  where False = <function allclose at 0x10d65a0b0>(array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...68e-01,\\n         4.84617618e-02],\\n       [-5.82491881e-01, -4.40029908e-01,  8.14330806e-02,\\n         5.12066575e-01]]), array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...00e+00,\\n         1.00000000e+00],\\n       [ 1.00000000e+00,  1.00000000e+00,  1.00000000e+00,\\n         1.00000000e+00]]), atol=1e-12, rtol=0)\nE            +    where <function allclose at 0x10d65a0b0> = np.allclose\nE            +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...68e-01,\\n         4.84617618e-02],\\n       [-5.82491881e-01, -4.40029908e-01,  8.14330806e-02,\\n         5.12066575e-01]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...574 -0.149510 -0.198201  0.022381\\n29 -0.772071 -0.188895 -0.310214  0.048462\\n30 -0.582492 -0.440030  0.081433  0.512067.values\nE            +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...00e+00,\\n         1.00000000e+00],\\n       [ 1.00000000e+00,  1.00000000e+00,  1.00000000e+00,\\n         1.00000000e+00]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...000  1.000000  1.000000  1.000000\\n29  1.000000  1.000000  1.000000  1.000000\\n30  1.000000  1.000000  1.000000  1.000000.values\n\ntests_generated/test_finding_1.py:36: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_lookahead - A...\nFAILED tests_generated/test_finding_1.py::test_signal_invariant_multiple_cutoffs\n2 failed in 0.88s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 0.81s"
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 4,
+          "bug_class": "lookahead_shift",
+          "explanation": "Secondary execution alignment: positions already contain future leak but gross uses same-bar asset_returns[t] with no additional lag. After fix to center=False, shift(1) is sufficient; currently shift(1) is insufficient to offset center=True leakage.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ogl89f0o/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "            max_diff = (orig_pre - pert_pre).abs().max().max()\n>           assert equal, f'INVARIANT_VIOLATED: signal() lookahead leak - values at or before cutoff {cutoff} changed after perturbing future prices, max_diff={max_diff}'\nE           AssertionError: INVARIANT_VIOLATED: signal() lookahead leak - values at or before cutoff 30 changed after perturbing future prices, max_diff=1.5120665751903286\nE           assert False\n\ntests_generated/test_finding_2.py:16: AssertionError\n_____________________ test_backtest_positions_no_lookahead _____________________\n\n    def test_backtest_positions_no_lookahead():\n        prices = module_under_test.synthetic_prices()\n        for cutoff in [30, 60, 90]:\n            perturbed = prices.copy()\n            perturbed.iloc[cutoff+1:] = 1.0\n            pnl_orig = module_under_test.backtest(prices)\n            pnl_pert = module_under_test.backtest(perturbed)\n            sig_orig = module_under_test.signal(prices)\n            sig_pert = module_under_test.signal(perturbed)\n            # check positions/signals invariance\n            orig_pos = sig_orig.iloc[:cutoff+1]\n            pert_pos = sig_pert.iloc[:cutoff+1]\n            equal_pos = np.allclose(orig_pos.values, pert_pos.values, atol=1e-12, rtol=1e-9, equal_nan=True)\n>           assert equal_pos, f'INVARIANT_VIOLATED: positions/signal at or before cutoff {cutoff} changed after future perturbation, max_diff={(orig_pos - pert_pos).abs().max().max()}'\nE           AssertionError: INVARIANT_VIOLATED: positions/signal at or before cutoff 30 changed after future perturbation, max_diff=1.5120665751903286\nE           assert False\n\ntests_generated/test_finding_2.py:31: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_signal_no_lookahead - Assertio...\nFAILED tests_generated/test_finding_2.py::test_backtest_positions_no_lookahead\n2 failed in 0.82s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 0.83s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 94.8,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 4,
+          "bug_class": "lookahead_shift",
+          "explanation": "No lookahead: signal explicitly lags with smooth.shift(1) on cell 2 line 4. Backtest cell 3 line 4 does (positions * asset_returns).mean(axis=1) where positions is already shifted, equivalent to position[t-1]*return[t]. No contemporaneous unshifted signal used.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-n_byi9ie/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "...                                                                      [100%]\n3 passed in 0.81s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "fullsample_leak",
+          "explanation": "No full-sample leak: signal uses only prices.pct_change().rolling(9).mean() on cell 2 line 3 plus shift(1). No full-sample mean/std, z-score, or in-sample normalization/standardization applied to entire series.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-xxl60s0q/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 0.79s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 5,
+          "bug_class": "universe_selection",
+          "explanation": "No universe selection bias: synthetic universe fixed to columns list(\"ABCD\") on cell 1 line 5. No filtering, ranking or selection of assets based on future returns/performance.",
+          "severity": "medium",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-kav14cyh/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "...                                                                      [100%]\n3 passed in 0.81s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "Costs modeled: cell 3 line 5 computes turnover = positions.diff().abs().sum(axis=1) and line 6 deducts turnover * cost_bps / 10_000 with default cost_bps=10. Not no-costs.",
+          "severity": "medium",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-m2167ouu/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 0.87s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 12,
+          "bug_class": "multiple_testing",
+          "explanation": "No multiple testing: single backtest evaluation print(round(sharpe(backtest(synthetic_prices())),3)) on cell 3 line 12. No loop over parameters, window search, asset search or best-of-N reporting without correction.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-4jy_oao2/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 0.79s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all.ipynb",
+      "tp": 1,
+      "fp": 4,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 129.2,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "fullsample_leak",
+          "explanation": "StandardScaler().fit_transform(feats) fits mean/std on the entire time-series (all rows of feats), so future observations leak into past scaled signals. Past signal values are normalized with future information.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-a2glc622/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "        prices = module_under_test.synthetic_prices()\n        cutoff = 50\n        rng = np.random.default_rng(12345)\n        perturbed = prices.copy()\n        # replace future with completely different random walk with high vol\n        future_len = len(prices) - (cutoff+1)\n        new_future_returns = rng.normal(0.02, 0.05, size=(future_len, len(prices.columns)))\n        last_price = prices.iloc[cutoff].values\n        new_prices = np.vstack([last_price * (1 + new_future_returns[0])] )\n        for i in range(1, future_len):\n            new_prices = np.vstack([new_prices, new_prices[-1] * (1 + new_future_returns[i])])\n        perturbed.iloc[cutoff+1:] = new_prices\n    \n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(perturbed)\n        orig_slice = sig_orig.iloc[:cutoff+1]\n        pert_slice = sig_pert.iloc[:cutoff+1]\n        equal = np.allclose(orig_slice.values, pert_slice.values, atol=1e-8, rtol=1e-8, equal_nan=True)\n        max_diff = np.nanmax(np.abs(orig_slice.values - pert_slice.values))\n>       assert equal, f\"INVARIANT_VIOLATED: signal at or before cutoff {cutoff} changed with random future perturbation max_diff={max_diff}\"\nE       AssertionError: INVARIANT_VIOLATED: signal at or before cutoff 50 changed with random future perturbation max_diff=1.5780251194683452\nE       assert False\n\ntests_generated/test_finding_1.py:67: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_leak_mid - As...\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_leak_early - ...\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_leak_late - A...\nFAILED tests_generated/test_finding_1.py::test_signal_no_future_leak_random_future\n4 failed in 4.68s",
+            "clean_sanity": "....                                                                     [100%]\n4 passed in 2.16s"
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 5,
+          "bug_class": "lookahead_shift",
+          "explanation": "No bug. rets = prices.pct_change().shift(1) and subsequent rolling(5).mean/rolling(20).std ensures signal[t] uses only returns up to t-1. backtest gross = (positions * asset_returns).mean() therefore multiplies positions[t]=f(returns<=t-1) by asset_returns[t]=return[t], which is correct one-step-ahead prediction without extra shift needed.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ipzyy246/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "        equal = np.allclose(orig_slice.values, pert_slice.values, atol=1e-8, rtol=1e-5, equal_nan=True)\n>       assert equal, f\"INVARIANT_VIOLATED: signal[t<=cutoff] changed after perturbing prices[t>cutoff]; cutoff={cutoff} max_abs_diff={(np.abs(orig_slice.values - pert_slice.values)).max()}\"\nE       AssertionError: INVARIANT_VIOLATED: signal[t<=cutoff] changed after perturbing prices[t>cutoff]; cutoff=60 max_abs_diff=2.216839961091912\nE       assert False\n\ntests_generated/test_finding_2.py:22: AssertionError\n_____________________ test_backtest_positions_no_lookahead _____________________\n\n    def test_backtest_positions_no_lookahead():\n        prices = module_under_test.synthetic_prices()\n        cutoff = 80\n        perturbed = prices.copy()\n        perturbed.iloc[cutoff+1:] *= 5.0\n        # positions are defined as signal(prices) in backtest\n        pos_orig = module_under_test.signal(prices)\n        pos_pert = module_under_test.signal(perturbed)\n        # positions at or before cutoff must not change\n>       assert np.allclose(pos_orig.iloc[:cutoff+1].values, pos_pert.iloc[:cutoff+1].values, atol=1e-8, rtol=1e-5), f\"INVARIANT_VIOLATED: positions at or before cutoff {cutoff} changed due to lookahead via future fit (e.g., StandardScaler on full sample)\"\nE       AssertionError: INVARIANT_VIOLATED: positions at or before cutoff 80 changed due to lookahead via future fit (e.g., StandardScaler on full sample)\nE       assert False\nE        +  where False = <function allclose at 0x10eac72f0>(array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-0.21494367, -0.17961836,  0.03337436,  0.16027206],\\n       [-1.35379995, -0.17360788, -0.29414482,  0.67732725]]), array([[0.26337419, 0.27328098, 0.27371541, 0.27336584],\\n       [0.26337419, 0.27328098, 0.27371541, 0.27336584],\\n    ...99],\\n       [0.23893568, 0.24573035, 0.2436725 , 0.24892559],\\n       [0.2089991 , 0.24593066, 0.2337685 , 0.26297271]]), atol=1e-08, rtol=1e-05)\nE        +    where <function allclose at 0x10eac72f0> = np.allclose\nE        +    and   array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-0.21494367, -0.17961836,  0.03337436,  0.16027206],\\n       [-1.35379995, -0.17360788, -0.29414482,  0.67732725]]) =            A         B         C         D\\n0   2.000000  2.000000  2.000000  2.000000\\n1   2.000000  2.000000  2.000000...  0.044617\\n79 -0.214944 -0.179618  0.033374  0.160272\\n80 -1.353800 -0.173608 -0.294145  0.677327\\n\\n[81 rows x 4 columns].values\nE        +    and   array([[0.26337419, 0.27328098, 0.27371541, 0.27336584],\\n       [0.26337419, 0.27328098, 0.27371541, 0.27336584],\\n    ...99],\\n       [0.23893568, 0.24573035, 0.2436725 , 0.24892559],\\n       [0.2089991 , 0.24593066, 0.2337685 , 0.26297271]]) =            A         B         C         D\\n0   0.263374  0.273281  0.273715  0.273366\\n1   0.263374  0.273281  0.273715...  0.247270\\n79  0.238936  0.245730  0.243673  0.248926\\n80  0.208999  0.245931  0.233768  0.262973\\n\\n[81 rows x 4 columns].values\n\ntests_generated/test_finding_2.py:39: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_signal_no_lookahead_invariant\nFAILED tests_generated/test_finding_2.py::test_backtest_positions_no_lookahead\n2 failed in 2.58s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 2.27s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 5,
+          "bug_class": "no_costs",
+          "explanation": "No bug. Transaction costs are applied: gross - turnover * cost_bps / 10_000 with default cost_bps=10 and turnover = positions.diff().abs().sum(axis=1).",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ep4qj8ms/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "E       AssertionError: INVARIANT_VIOLATED: signal/position before cutoff changed after future perturbation - look-ahead bias via global StandardScaler\nE       assert False\nE        +  where False = <function allclose at 0x103a35770>(array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.08843875, -0.3961686 , -1.15942541, -2.        ],\\n       [-0.41313753, -0.43423434, -0.55267357, -2.        ]]), array([[0.20360439, 0.24914741, 0.30116901, 0.26252459],\\n       [0.20360439, 0.24914741, 0.30116901, 0.26252459],\\n    ...6 ],\\n       [0.1860338 , 0.23180428, 0.28130782, 0.23433784],\\n       [0.19259115, 0.23132957, 0.28637537, 0.23420396]]), atol=1e-10, rtol=1e-08, equal_nan=True)\nE        +    where <function allclose at 0x103a35770> = np.allclose\nE        +    and   array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.08843875, -0.3961686 , -1.15942541, -2.        ],\\n       [-0.41313753, -0.43423434, -0.55267357, -2.        ]]) =            A         B         C         D\\n0   2.000000  2.000000  2.000000  2.000000\\n1   2.000000  2.000000  2.000000... -1.271475\\n59 -1.088439 -0.396169 -1.159425 -2.000000\\n60 -0.413138 -0.434234 -0.552674 -2.000000\\n\\n[61 rows x 4 columns].values\nE        +    and   array([[0.20360439, 0.24914741, 0.30116901, 0.26252459],\\n       [0.20360439, 0.24914741, 0.30116901, 0.26252459],\\n    ...6 ],\\n       [0.1860338 , 0.23180428, 0.28130782, 0.23433784],\\n       [0.19259115, 0.23132957, 0.28637537, 0.23420396]]) =            A         B         C         D\\n0   0.203604  0.249147  0.301169  0.262525\\n1   0.203604  0.249147  0.301169...  0.241506\\n59  0.186034  0.231804  0.281308  0.234338\\n60  0.192591  0.231330  0.286375  0.234204\\n\\n[61 rows x 4 columns].values\n\ntests_generated/test_finding_3.py:16: AssertionError\n____________________ test_signal_invariant_multiple_cutoffs ____________________\n\n    def test_signal_invariant_multiple_cutoffs():\n        prices = module_under_test.synthetic_prices()\n        for cutoff in [30, 75, 90]:\n            orig = module_under_test.signal(prices)\n            perturbed = prices.copy()\n            perturbed.iloc[cutoff+1:] = perturbed.iloc[cutoff+1:] * 10.0\n            new = module_under_test.signal(perturbed)\n>           assert np.allclose(orig.iloc[:cutoff].values, new.iloc[:cutoff].values, atol=1e-10, equal_nan=True), f'INVARIANT_VIOLATED: cutoff {cutoff} leaked future into past signal'\nE           AssertionError: INVARIANT_VIOLATED: cutoff 30 leaked future into past signal\nE           assert False\nE            +  where False = <function allclose at 0x103a35770>(array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.269279  , -0.07415646,  0.03019943,  0.43780746],\\n       [-1.64059243, -0.67098056,  0.11322609, -0.41285375]]), array([[0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n       [0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n    ...53],\\n       [0.22043614, 0.23985666, 0.23791243, 0.24900889],\\n       [0.21567836, 0.2326337 , 0.23859251, 0.23803125]]), atol=1e-10, equal_nan=True)\nE            +    where <function allclose at 0x103a35770> = np.allclose\nE            +    and   array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.269279  , -0.07415646,  0.03019943,  0.43780746],\\n       [-1.64059243, -0.67098056,  0.11322609, -0.41285375]]) =            A         B         C         D\\n0   2.000000  2.000000  2.000000  2.000000\\n1   2.000000  2.000000  2.000000...091  0.416776 -0.537027  0.516946\\n28 -1.269279 -0.074156  0.030199  0.437807\\n29 -1.640592 -0.670981  0.113226 -0.412854.values\nE            +    and   array([[0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n       [0.24993976, 0.25429138, 0.25378028, 0.25328278],\\n    ...53],\\n       [0.22043614, 0.23985666, 0.23791243, 0.24900889],\\n       [0.21567836, 0.2326337 , 0.23859251, 0.23803125]]) =            A         B         C         D\\n0   0.249940  0.254291  0.253780  0.253283\\n1   0.249940  0.254291  0.253780...518  0.245563  0.231568  0.250017\\n28  0.220436  0.239857  0.237912  0.249009\\n29  0.215678  0.232634  0.238593  0.238031.values\n\ntests_generated/test_finding_3.py:25: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_3.py::test_signal_no_future_leakage - Ass...\nFAILED tests_generated/test_finding_3.py::test_signal_invariant_multiple_cutoffs\n2 failed in 2.67s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 2.35s"
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 1,
+          "bug_class": "universe_selection",
+          "explanation": "No bug. Universe is fixed synthetic ABCD created in cell 1; no dynamic selection on past return/performance, market-cap, or survivorship filtering.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-mk8iihx6/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________________ test_signal_invariant_to_future_prices ____________________\n\n    def test_signal_invariant_to_future_prices():\n        prices = module_under_test.synthetic_prices()\n        n = len(prices)\n        cutoff = n // 2\n        prices_pert = prices.copy()\n        # perturb only future prices after cutoff with large shock\n        prices_pert.iloc[cutoff+1:] = prices_pert.iloc[cutoff+1:] * 8.0 + 150.0\n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(prices_pert)\n        # slice at or before cutoff inclusive - must be invariant to future perturbation\n        orig_before = sig_orig.iloc[:cutoff+1]\n        pert_before = sig_pert.iloc[:cutoff+1]\n>       assert np.allclose(orig_before.to_numpy(), pert_before.to_numpy(), atol=1e-8, rtol=1e-8, equal_nan=True), 'INVARIANT_VIOLATED: signal/position at or before cutoff changed after perturbing future prices - look-ahead bias via full-sample fit (e.g., StandardScaler on entire history)'\nE       AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff changed after perturbing future prices - look-ahead bias via full-sample fit (e.g., StandardScaler on entire history)\nE       assert False\nE        +  where False = <function allclose at 0x10b8d9bf0>(array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.08843875, -0.3961686 , -1.15942541, -2.        ],\\n       [-0.41313753, -0.43423434, -0.55267357, -2.        ]]), array([[0.24996727, 0.25257837, 0.25241656, 0.25229527],\\n       [0.24996727, 0.25257837, 0.25241656, 0.25229527],\\n    ...55],\\n       [0.22808541, 0.23326645, 0.22593658, 0.20899806],\\n       [0.23639969, 0.23260375, 0.23316948, 0.20880884]]), atol=1e-08, rtol=1e-08, equal_nan=True)\nE        +    where <function allclose at 0x10b8d9bf0> = np.allclose\nE        +    and   array([[ 2.        ,  2.        ,  2.        ,  2.        ],\\n       [ 2.        ,  2.        ,  2.        ,  2.       ...    [-1.08843875, -0.3961686 , -1.15942541, -2.        ],\\n       [-0.41313753, -0.43423434, -0.55267357, -2.        ]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   2.000000  2.000000  2.000000  2.000000\\n1   2.000000  2.000000  2.000000... -1.271475\\n59 -1.088439 -0.396169 -1.159425 -2.000000\\n60 -0.413138 -0.434234 -0.552674 -2.000000\\n\\n[61 rows x 4 columns].to_numpy\nE        +    and   array([[0.24996727, 0.25257837, 0.25241656, 0.25229527],\\n       [0.24996727, 0.25257837, 0.25241656, 0.25229527],\\n    ...55],\\n       [0.22808541, 0.23326645, 0.22593658, 0.20899806],\\n       [0.23639969, 0.23260375, 0.23316948, 0.20880884]]) = to_numpy()\nE        +      where to_numpy =            A         B         C         D\\n0   0.249967  0.252578  0.252417  0.252295\\n1   0.249967  0.252578  0.252417...  0.220113\\n59  0.228085  0.233266  0.225937  0.208998\\n60  0.236400  0.232604  0.233169  0.208809\\n\\n[61 rows x 4 columns].to_numpy\n\ntests_generated/test_finding_4.py:17: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_4.py::test_signal_invariant_to_future_prices\n1 failed in 2.26s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.19s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 10,
+          "bug_class": "multiple_testing",
+          "explanation": "No bug evidenced. Single synthetic dataset (rng seed 7) and single Sharpe computation with no parameter grid search, seed optimization, or uncorrected selective reporting shown in notebook.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ziw5m10c/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "        perturbed.iloc[cutoff+1:] = perturbed.iloc[cutoff+1:] * 10.0\n    \n        # Sanity: perturbation actually changed future\n        assert not perturbed.iloc[cutoff+1:].equals(prices.iloc[cutoff+1:])\n    \n        # Signals are positions in this module (backtest uses signal directly)\n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(perturbed)\n    \n        # Also get backtest pnl to test positions-derived quantity invariance\n        pnl_orig = module_under_test.backtest(prices)\n        pnl_pert = module_under_test.backtest(perturbed)\n    \n        # Slice at or before cutoff inclusive\n        sig_orig_before = sig_orig.iloc[:cutoff+1]\n        sig_pert_before = sig_pert.iloc[:cutoff+1]\n        pnl_orig_before = pnl_orig.iloc[:cutoff+1]\n        pnl_pert_before = pnl_pert.iloc[:cutoff+1]\n    \n        # Compare with strict tolerance; any leakage via global StandardScaler will violate this\n        sig_equal = np.allclose(sig_orig_before.to_numpy(), sig_pert_before.to_numpy(), atol=1e-12, rtol=1e-9, equal_nan=True)\n        max_sig_diff = np.nanmax(np.abs(sig_orig_before.to_numpy() - sig_pert_before.to_numpy()))\n>       assert sig_equal, f\"INVARIANT_VIOLATED: signal/position at or before cutoff={cutoff} changed after perturbing future prices; max_abs_diff={max_sig_diff}\"\nE       AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff=60 changed after perturbing future prices; max_abs_diff=2.2156328382050736\nE       assert False\n\ntests_generated/test_finding_5.py:39: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_5.py::test_future_perturbation_does_not_affect_past_signals\n1 failed in 4.76s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.20s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 117.6,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "lookahead_shift",
+          "explanation": "No classic t vs t+1 P&L shift bug - signal correctly lags in cell 2 line 5 via pct_change().shift(1) so cell 3 line 4 positions*asset_returns is aligned. However minor same-bar lookahead in normalization: mu=feats.expanding().mean() and sd=feats.expanding().std() (lines 7-8) include feats[t] when computing scaled[t]=(feats[t]-mu[t])/sd[t]. Should be mu.shift(1) and sd.shift(1). Bias toward zero, low severity.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ersqbfos/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 2.35s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "fullsample_leak",
+          "explanation": "No full-sample fit. Code correctly uses causal expanding mean/std (lines 7-8) instead of StandardScaler.fit on full history. Import at cell 2 line 1 `from sklearn.preprocessing import StandardScaler` is dead code - docstring mentions sklearn but not used. No leakage of future beyond same-bar inclusion noted in lookahead_shift.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-74sn3t5i/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 2.24s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 7,
+          "bug_class": "universe_selection",
+          "explanation": "No universe selection / survivorship filtering. Synthetic DataFrame in cell 1 line 7 uses all 4 columns ABCD with fixed size (120,4). No conditioning on future returns, no top-N selection, no dropping losers.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-cl4s2b2n/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 3.08s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "Costs are modeled. Cell 3 line 5 `turnover = positions.diff().abs().sum(axis=1)` and line 6 `return gross - turnover * cost_bps / 10_000` with default cost_bps=10. Not ignoring costs. Note gross is mean(axis=1) while turnover is sum(axis=1) - cost scale is ~4x mean but costs are present.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-kmqxjpn2/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "...                                                                      [100%]\n3 passed in 2.24s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 12,
+          "bug_class": "multiple_testing",
+          "explanation": "Single hypothesis: `print(round(sharpe(backtest(synthetic_prices())),3))` at cell 3 line 12. One synthetic data seed (7), one signal definition, one Sharpe without parameter grid search, selection of best, or p-hacking. No multiple-testing correction needed.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-rsq3bak9/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 2.24s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split.ipynb",
+      "tp": 1,
+      "fp": 3,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 252.3,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "lookahead_shift",
+          "explanation": "No bug: features are explicitly lagged via .shift(1) - X = pd.concat({\"lag1\": rets.shift(1).stack(), \"lag5\": rets.rolling(5).mean().shift(1).stack()}, axis=1). Therefore positions_t predicts y_t using only information to t-1 and alignment positions*asset_returns in cell 3 line 4 gross = (positions * asset_returns).mean(axis=1) is correct without extra shift.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-k1q6vplx/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 4.86s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 10,
+          "bug_class": "fullsample_leak",
+          "explanation": "Leaked future: data = pd.concat([X, y.rename(\"y\")], axis=1).dropna() is pooled stacked panel across time and assets, then X_train, X_test, y_train, y_test = train_test_split(data[[\"lag1\",\"lag5\"]], data[\"y\"], test_size=0.3, random_state=0) uses sklearn default shuffle=True so train contains random future timestamps. Model fitted on cell 2 line 11 model = LinearRegression().fit(X_train, y_train) and applied on cell 2 line 12 pred = pd.Series(model.predict(X.fillna(0.0)), index=X.index).unstack() to full history. Walk-forward/chronological split required.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-jmr2tz0s/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "        n_cols = len(prices.columns)\n        assert n_tail > 0\n        # deterministic extreme future: constant +8% daily return after cutoff\n        const_ret = 0.08\n        new_rets = np.full((n_tail, n_cols), const_ret, dtype=float)\n        base = prices.iloc[cutoff]  # Series at cutoff\n        cum = np.cumprod(1.0 + new_rets, axis=0)\n        new_tail = pd.DataFrame(cum * base.values, index=prices.index[cutoff+1:], columns=prices.columns)\n        prices_perturbed.iloc[cutoff+1:] = new_tail\n    \n        # sanity: perturbation actually changed future prices\n        assert not prices.iloc[cutoff+1:].equals(prices_perturbed.iloc[cutoff+1:])\n    \n        # compute signals/positions from both histories\n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(prices_perturbed)\n    \n        # invariant: signals at or before cutoff must be identical\n        # signal() returns sign in {-1,0,1} reindexed to prices.index, so exact equality expected\n        orig_slice = sig_orig.iloc[:cutoff+1]\n        pert_slice = sig_pert.iloc[:cutoff+1]\n        equal = orig_slice.equals(pert_slice)\n>       assert equal, f\"INVARIANT_VIOLATED: signals/positions at or before cutoff={cutoff} changed after perturbing future prices; diff={(orig_slice != pert_slice).sum().sum()} rows, orig_head={orig_slice.head(3).to_dict()} pert_head={pert_slice.head(3).to_dict()}\"\nE       AssertionError: INVARIANT_VIOLATED: signals/positions at or before cutoff=60 changed after perturbing future prices; diff=131 rows, orig_head={'A': {0: 0.0, 1: 0.0, 2: -1.0}, 'B': {0: 0.0, 1: 0.0, 2: -1.0}, 'C': {0: 0.0, 1: 0.0, 2: -1.0}, 'D': {0: 0.0, 1: 0.0, 2: -1.0}} pert_head={'A': {0: 0.0, 1: 0.0, 2: -1.0}, 'B': {0: 0.0, 1: 0.0, 2: -1.0}, 'C': {0: 0.0, 1: 0.0, 2: 1.0}, 'D': {0: 0.0, 1: 0.0, 2: 1.0}}\nE       assert False\n\ntests_generated/test_finding_2.py:38: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_affect_past_signals\n1 failed in 2.98s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.80s"
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 6,
+          "bug_class": "universe_selection",
+          "explanation": "No bug: cell 1 synthetic_prices() creates fixed universe columns=[\"ABCD\"] with no filtering on future returns, market-cap, listing/delisting or survivorship criteria.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-srpq_404/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "_____________________ test_future_perturbation_invariance ______________________\n\n    def test_future_perturbation_invariance():\n        \"\"\"Perturb synthetic prices after cutoff; signals/positions at or before cutoff must be invariant.\"\"\"\n        prices = module_under_test.synthetic_prices()\n        n = len(prices)\n        cutoff = n // 2  # e.g. 60 for 120 rows\n        # create perturbed copy - only future after cutoff is modified\n        perturbed = prices.copy()\n        # deterministic large shock to future prices only\n        perturbed.iloc[cutoff+1:] = perturbed.iloc[cutoff+1:] * 3.0 + 7.0\n    \n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(perturbed)\n    \n        # also check backtest-derived positions if available (here signal == positions)\n        hist_orig = sig_orig.iloc[:cutoff+1]\n        hist_pert = sig_pert.iloc[:cutoff+1]\n    \n        # exact equality for sign signals (-1,0,1); use equals for DataFrame comparison\n>       assert hist_orig.equals(hist_pert), f\"INVARIANT_VIOLATED: signals/positions at or before cutoff {cutoff} changed after perturbing prices after cutoff; indicates lookahead leakage. Diff counts: {(hist_orig != hist_pert).sum().to_dict()}\"\nE       AssertionError: INVARIANT_VIOLATED: signals/positions at or before cutoff 60 changed after perturbing prices after cutoff; indicates lookahead leakage. Diff counts: {'A': 37, 'B': 46, 'C': 43, 'D': 47}\nE       assert False\nE        +  where False = equals(      A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2   1.0  1.0  1.0  1.0\\n3   1.0  1.0  1.0  1.0\\n4  ... 1.0\\n57  1.0  1.0  1.0  1.0\\n58  1.0  1.0  1.0  1.0\\n59  1.0  1.0  1.0  1.0\\n60  1.0  1.0  1.0  1.0\\n\\n[61 rows x 4 columns])\nE        +    where equals =       A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2  -1.0 -1.0 -1.0 -1.0\\n3  -1.0 -1.0 -1.0 -1.0\\n4  ... 1.0\\n57 -1.0  1.0  1.0 -1.0\\n58  1.0  1.0  1.0 -1.0\\n59 -1.0 -1.0  1.0  1.0\\n60 -1.0 -1.0 -1.0  1.0\\n\\n[61 rows x 4 columns].equals\n\ntests_generated/test_finding_3.py:23: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_3.py::test_future_perturbation_invariance\n1 failed in 2.51s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.47s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 5,
+          "bug_class": "no_costs",
+          "explanation": "No bug: transaction costs are included. cell 3 line 5 turnover = positions.diff().abs().sum(axis=1).fillna(0.0) and line 6 return gross - turnover * cost_bps / 10_000 with cost_bps=10. Gross is also correctly computed from pct_change.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-09zfxobe/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "        prices = module_under_test.synthetic_prices()\n        cutoff_pos = len(prices) // 2\n        orig_signals = module_under_test.signal(prices)\n        assert orig_signals.shape == prices.shape\n        rng = np.random.default_rng(12345)\n        for trial in [0, 1]:\n            perturbed = prices.copy()\n            n_future = len(prices) - cutoff_pos - 1\n            n_assets = prices.shape[1]\n            if trial == 0:\n                alt_rets = np.full((n_future, n_assets), 0.04) + rng.normal(0, 0.005, size=(n_future, n_assets))\n            else:\n                alt_rets = np.full((n_future, n_assets), -0.04) + rng.normal(0, 0.005, size=(n_future, n_assets))\n            base = prices.iloc[cutoff_pos].values\n            alt_prices = base * np.cumprod(1 + alt_rets, axis=0)\n            perturbed.iloc[cutoff_pos+1:] = alt_prices\n            perturbed = perturbed.clip(lower=1.0)\n            new_signals = module_under_test.signal(perturbed)\n            orig_before = orig_signals.iloc[:cutoff_pos+1]\n            new_before = new_signals.iloc[:cutoff_pos+1]\n>           assert orig_before.equals(new_before), f'INVARIANT_VIOLATED: signal() past signals changed after perturbing future prices (trial {trial}, cutoff_pos {cutoff_pos}). Diff count {(orig_before != new_before).sum().sum()}'\nE           AssertionError: INVARIANT_VIOLATED: signal() past signals changed after perturbing future prices (trial 0, cutoff_pos 60). Diff count 155\nE           assert False\nE            +  where False = equals(      A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2   1.0 -1.0  1.0  1.0\\n3   1.0  1.0  1.0  1.0\\n4  ... 1.0\\n57 -1.0 -1.0 -1.0 -1.0\\n58 -1.0 -1.0 -1.0 -1.0\\n59  1.0  1.0  1.0 -1.0\\n60  1.0 -1.0  1.0 -1.0\\n\\n[61 rows x 4 columns])\nE            +    where equals =       A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2  -1.0 -1.0 -1.0 -1.0\\n3  -1.0 -1.0 -1.0 -1.0\\n4  ... 1.0\\n57 -1.0  1.0  1.0 -1.0\\n58  1.0  1.0  1.0 -1.0\\n59 -1.0 -1.0  1.0  1.0\\n60 -1.0 -1.0 -1.0  1.0\\n\\n[61 rows x 4 columns].equals\n\ntests_generated/test_finding_4.py:26: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_4.py::test_signal_temporal_invariance - A...\n1 failed in 2.48s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.47s"
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 11,
+          "bug_class": "multiple_testing",
+          "explanation": "No bug: single pooled LinearRegression with fixed features [lag1,lag5] and single sharpe in cell 3 line 12 print(round(sharpe(backtest(synthetic_prices())),3)). No grid search, threshold sweep, or repeated trials reported; train_test_split split unused (y_test never evaluated for selection).",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-fnze_8c_/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "            sig_orig = module_under_test.signal(prices)\n            sig_pert = module_under_test.signal(perturbed)\n            orig_slice = sig_orig.iloc[:cutoff+1]\n            pert_slice = sig_pert.iloc[:cutoff+1]\n>           assert orig_slice.equals(pert_slice), f'INVARIANT_VIOLATED: signal/position at or before cutoff {cutoff} changed when future prices were perturbed (look-ahead bias). Mismatched entries: {(orig_slice != pert_slice).sum().sum()}'\nE           AssertionError: INVARIANT_VIOLATED: signal/position at or before cutoff 30 changed when future prices were perturbed (look-ahead bias). Mismatched entries: 73\nE           assert False\nE            +  where False = equals(      A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2   1.0 -1.0  1.0  1.0\\n3   1.0 -1.0  1.0  1.0\\n4  ...-1.0\\n26  1.0 -1.0  1.0  1.0\\n27 -1.0 -1.0  1.0  1.0\\n28  1.0  1.0  1.0  1.0\\n29 -1.0  1.0  1.0 -1.0\\n30  1.0 -1.0  1.0  1.0)\nE            +    where equals =       A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2  -1.0 -1.0 -1.0 -1.0\\n3  -1.0 -1.0 -1.0 -1.0\\n4  ...-1.0\\n26 -1.0 -1.0  1.0 -1.0\\n27 -1.0 -1.0 -1.0 -1.0\\n28  1.0 -1.0 -1.0 -1.0\\n29  1.0 -1.0 -1.0 -1.0\\n30  1.0  1.0 -1.0 -1.0.equals\n\ntests_generated/test_finding_5.py:38: AssertionError\n_________________ test_backtest_positions_invariant_to_future __________________\n\n    def test_backtest_positions_invariant_to_future():\n        prices = module_under_test.synthetic_prices()\n        cutoff = 60\n        perturbed = _make_perturbed_future(prices, cutoff, seed=999)\n        sig_orig = module_under_test.signal(prices)\n        sig_pert = module_under_test.signal(perturbed)\n>       assert sig_orig.iloc[:cutoff+1].equals(sig_pert.iloc[:cutoff+1]), f'INVARIANT_VIOLATED: positions at or before cutoff {cutoff} changed after future perturbation'\nE       AssertionError: INVARIANT_VIOLATED: positions at or before cutoff 60 changed after future perturbation\nE       assert False\nE        +  where False = equals(      A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2   1.0 -1.0  1.0  1.0\\n3   1.0  1.0  1.0  1.0\\n4  ... 1.0\\n57  1.0 -1.0 -1.0 -1.0\\n58 -1.0 -1.0 -1.0 -1.0\\n59  1.0  1.0  1.0 -1.0\\n60  1.0  1.0  1.0 -1.0\\n\\n[61 rows x 4 columns])\nE        +    where equals =       A    B    C    D\\n0   0.0  0.0  0.0  0.0\\n1   0.0  0.0  0.0  0.0\\n2  -1.0 -1.0 -1.0 -1.0\\n3  -1.0 -1.0 -1.0 -1.0\\n4  ... 1.0\\n57 -1.0  1.0  1.0 -1.0\\n58  1.0  1.0  1.0 -1.0\\n59 -1.0 -1.0  1.0  1.0\\n60 -1.0 -1.0 -1.0  1.0\\n\\n[61 rows x 4 columns].equals\n\ntests_generated/test_finding_5.py:46: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_5.py::test_signal_invariant_to_future_perturbation\nFAILED tests_generated/test_finding_5.py::test_backtest_positions_invariant_to_future\n2 failed in 2.58s",
+            "clean_sanity": "..                                                                       [100%]\n2 passed in 2.67s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 146.5,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 6,
+          "bug_class": "lookahead_shift",
+          "explanation": "No bug. Features explicitly lagged: rets.shift(1) and rets.rolling(5).mean().shift(1) in cell 2 line 6. pred[t] predicts rets[t] using data up to t-1, so backtest gross=(positions * asset_returns) in cell 3 line 4 is correctly aligned and does not need extra shift.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-411_pjxt/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 4.69s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "No bug. Model fitted only on train=data[data.index.get_level_values(0) < 40] cell 2 lines 9-10. Predictions for t>=40 are out-of-sample; coefficients not refit on future data. pred.loc[pred.index < 40]=0.0 cell 2 line 12 suppresses in-sample trading.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ztnw9iuy/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "......                                                                   [100%]\n6 passed in 2.52s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 7,
+          "bug_class": "universe_selection",
+          "explanation": "No bug. Universe fixed as synthetic DataFrame columns ABCD cell 1 line 7; no dynamic filtering, ranking, or survivorship/biased selection on returns.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-z1yh5826/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "...                                                                      [100%]\n3 passed in 2.53s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "No bug. Costs implemented: turnover=positions.diff().abs().sum(axis=1) cell 3 line 5 and return gross - turnover * cost_bps / 10_000 with default cost_bps=10 cell 3 lines 1,6.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-nqdy4tya/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 2.50s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "multiple_testing",
+          "explanation": "No bug. Single pooled LinearRegression on lag1/lag5 with single train/test split <40 vs >=40 and single sharpe print cell 3 line 12; no grid search over assets/params/thresholds or selective reporting.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-cjrneh6m/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 4.08s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward.ipynb",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "raw": 1,
+      "seconds": 69.9,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 11,
+          "bug_class": "lookahead_shift",
+          "explanation": "pd.merge_asof with direction='forward' is lookahead: every bar is joined to the *next* future announcement (e.g., bars 0-9 get announcement published at t=10, bars 11-19 get t=20). The subsequent .shift(1) on line 12 only delays by 1 bar but still trades on future information. Fix: direction='backward' with appropriate execution lag.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "PROVEN",
+          "reason": "invariant failed on candidate and passed on clean control",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-o7u0lu3f/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "\n    def test_signal_no_lookahead_invariance():\n        prices = module_under_test.synthetic_prices()\n        # cutoffs chosen between announcement dates (announcements every 10 bars at 10,20,30...)\n        # so that forward-merge incorrectly uses the next future announcement\n        cutoffs = [15, 25, 35, 45, 55, 65, 75, 85]\n        for cutoff in cutoffs:\n            for factor in (5.0, 0.2):\n                perturbed = prices.copy()\n                # perturb synthetic prices strictly after the cutoff\n                idx_future = perturbed.index > cutoff\n                perturbed.loc[idx_future] = perturbed.loc[idx_future] * factor\n                sig_orig = module_under_test.signal(prices)\n                sig_pert = module_under_test.signal(perturbed)\n                # signals/positions at or before cutoff must not change (no lookahead)\n                mask = sig_orig.index <= cutoff\n                orig_before = sig_orig.loc[mask]\n                pert_before = sig_pert.loc[mask]\n>               assert np.allclose(orig_before.values, pert_before.values, atol=1e-12, equal_nan=True), f\"INVARIANT_VIOLATED: cutoff={cutoff} factor={factor} signals/positions at or before cutoff changed after perturbing future prices - lookahead detected: orig_before vs pert_before differ\"\nE               AssertionError: INVARIANT_VIOLATED: cutoff=15 factor=5.0 signals/positions at or before cutoff changed after perturbing future prices - lookahead detected: orig_before vs pert_before differ\nE               assert False\nE                +  where False = <function allclose at 0x109822670>(array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [-0.21421146, -0.01908447,  0.78260725, -0.07999843],\\n       [-0.21421146, -0.01908447,  0.78260725, -0.07999843]]), array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 1.        ,  1.        ,  1.        ,  1.        ],\\n       [ 1.        ,  1.        ,  1.        ,  1.        ]]), atol=1e-12, equal_nan=True)\nE                +    where <function allclose at 0x109822670> = np.allclose\nE                +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [-0.21421146, -0.01908447,  0.78260725, -0.07999843],\\n       [-0.21421146, -0.01908447,  0.78260725, -0.07999843]]) =            A         B         C         D\\nt                                         \\n0   0.000000  0.000000  0.000000...211 -0.019084  0.782607 -0.079998\\n14 -0.214211 -0.019084  0.782607 -0.079998\\n15 -0.214211 -0.019084  0.782607 -0.079998.values\nE                +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [-0.51898532, -0.32756665, -0.81960919, -0.0120618...    [ 1.        ,  1.        ,  1.        ,  1.        ],\\n       [ 1.        ,  1.        ,  1.        ,  1.        ]]) =            A         B         C         D\\nt                                         \\n0   0.000000  0.000000  0.000000...000  1.000000  1.000000  1.000000\\n14  1.000000  1.000000  1.000000  1.000000\\n15  1.000000  1.000000  1.000000  1.000000.values\n\ntests_generated/test_finding_1.py:22: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_no_lookahead_invariance\n1 failed in 1.43s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.93s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 0,
+      "seconds": 30.7,
+      "findings": []
+    },
+    {
+      "notebook": "decoy_forward_label.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 1,
+      "seconds": 59.4,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 3,
+          "bug_class": "lookahead_shift",
+          "explanation": "No lookahead_shift: signal correctly uses .pct_change(20).shift(1) in Cell 2 line 3. The backtest execution path in Cell 3 line 2 (positions = signal(prices)) and line 4 (positions * asset_returns) correctly multiplies the lagged signal (known at t-1) by asset_returns at t without further shift needed. Cell 2 line 7 (fwd_ret = prices.pct_change().shift(-1)) is inside diagnostic-only information_coefficient (Cell 2 lines 5-8) which is never called in Cell 3 backtest.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-c77jps5n/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 1.41s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "decoy_fixed_params.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 5,
+      "seconds": 132.2,
+      "findings": [
+        {
+          "cell_index": 2,
+          "line": 7,
+          "bug_class": "lookahead_shift",
+          "explanation": "No lookahead: signal correctly lags all inputs with .shift(1) before trading next period return.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-4rpa4jlp/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 1.68s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 2,
+          "line": 1,
+          "bug_class": "fullsample_leak",
+          "explanation": "VOL_TARGET is set ex-ante and volatility scaling uses only trailing rolling(20).std().shift(1) (cell 2 lines 7-8), no full-sample or expanding-window normalization that peeks ahead.",
+          "severity": "high",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-mlpu9e1l/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 0.80s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 1,
+          "line": 7,
+          "bug_class": "universe_selection",
+          "explanation": "Universe is fixed to ABCD in synthetic_prices(); no dynamic filtering on returns, performance, or survival that would induce selection/survivorship bias.",
+          "severity": "medium",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-vseu2gmi/tests_generated/test_finding_3.py",
+          "runner_stdout_tail": {
+            "candidate": "...                                                                      [100%]\n3 passed in 0.82s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 6,
+          "bug_class": "no_costs",
+          "explanation": "Costs are explicitly modeled: backtest signature cost_bps=10 (cell 3 line 1), turnover computed via positions.diff() (cell 3 line 5), deducted as turnover*cost_bps/1e4 (cell 3 line 6).",
+          "severity": "medium",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-_kf8b8f4/tests_generated/test_finding_4.py",
+          "runner_stdout_tail": {
+            "candidate": "..                                                                       [100%]\n2 passed in 0.79s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 12,
+          "bug_class": "multiple_testing",
+          "explanation": "Single pre-specified parameter set VOL_TARGET=0.10 and LOOKBACK=60 and single evaluation print(sharpe(...)) (cell 3 line 12); no grid search, loop, or repeated trials requiring multiple-testing correction.",
+          "severity": "low",
+          "detector": "LLMDetector",
+          "status": "UNPROVEN",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-6j4plgh4/tests_generated/test_finding_5.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.78s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    }
+  ]
+}

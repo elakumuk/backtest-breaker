@@ -1,0 +1,658 @@
+{
+  "detector": "StaticDetector",
+  "precision": 0.0,
+  "recall": 0.0,
+  "tp": 0,
+  "fp": 0,
+  "fn": 5,
+  "rows": [
+    {
+      "notebook": "bfill_gaps.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 2,
+      "seconds": 20.1,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": "E       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 2 / 244 (0.82%)\nE       Mismatch at indices:\nE        [59, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE        [60, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE       Max absolute difference among violations: 0.22265237\nE       Max relative difference among violations: 1.11326184\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed, 4 warnings in 4.18s\nFIXED SOURCE TEST\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 2 / 244 (0.82%)\nE       Mismatch at indices:\nE        [59, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE        [60, 2]: -0.022652367521877714 (ACTUAL), 0.2 (DESIRED)\nE       Max absolute difference among violations: 0.22265237\nE       Max relative difference among violations: 1.11326184\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [ 0.      ,  0.      ,  0.      ,  0.      ],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\ntests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed, 4 warnings in 1.95s",
+            "clean_sanity": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-3vnof0ad/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 1.36s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-jb2z3alm/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:26\ntests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\ntests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-jb2z3alm/module_under_test.py:26: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    momentum = filled.pct_change(10).shift(1)\n\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-jb2z3alm/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 4 warnings in 1.42s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "bfill_gaps__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 6.1,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-2jhm_mfn/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-2jhm_mfn/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 1.64s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-e0933dn8/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n=============================== warnings summary ===============================\nmodule_under_test.py:35\n  /private/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-e0933dn8/module_under_test.py:35: FutureWarning: The default fill_method='pad' in DataFrame.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\n    asset_returns = prices.pct_change().fillna(0.0)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 1.00s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 2,
+      "seconds": 10.6,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-rzp1unao/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 16 / 244 (6.56%)\nE       First 5 mismatches are at indices:\nE        [57, 0]: -0.15213773548076057 (ACTUAL), 1.0 (DESIRED)\nE        [57, 1]: -0.4226419867888064 (ACTUAL), 1.0 (DESIRED)\nE        [57, 2]: -0.09964499160445531 (ACTUAL), 1.0 (DESIRED)\nE        [57, 3]: -0.526844249972548 (ACTUAL), 1.0 (DESIRED)\nE        [58, 0]: -0.2998185007680084 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\nE        DESIRED: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.86s\nFIXED SOURCE TEST\n>       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 16 / 244 (6.56%)\nE       First 5 mismatches are at indices:\nE        [57, 0]: -0.15213773548076057 (ACTUAL), 1.0 (DESIRED)\nE        [57, 1]: -0.4226419867888064 (ACTUAL), 1.0 (DESIRED)\nE        [57, 2]: -0.09964499160445531 (ACTUAL), 1.0 (DESIRED)\nE        [57, 3]: -0.526844249972548 (ACTUAL), 1.0 (DESIRED)\nE        [58, 0]: -0.2998185007680084 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\nE        DESIRED: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.88s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.90s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-lq8704ir/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 12 / 244 (4.92%)\nE       First 5 mismatches are at indices:\nE        [58, 0]: -0.2998185007680084 (ACTUAL), 1.0 (DESIRED)\nE        [58, 1]: -0.13336436507384156 (ACTUAL), 1.0 (DESIRED)\nE        [58, 2]: -0.10085394872392116 (ACTUAL), 1.0 (DESIRED)\nE        [58, 3]: -0.932196669904179 (ACTUAL), 1.0 (DESIRED)\nE        [59, 0]: -0.1729218606731944 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\nE        DESIRED: array([[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],\nE              [ 0.000000e+00,  0.000000e+00,  0.000000e+00,  0.000000e+00],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.96s\nFIXED SOURCE TEST\n\n==================================== ERRORS ====================================\n______________ ERROR collecting tests_generated/test_finding_2.py ______________\ntests_generated/test_finding_2.py:2: in <module>\n    import module_under_test as target\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/opt/anaconda3/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:184: in exec_module\n    exec(co, module.__dict__)\nmodule_under_test.py:41: in <module>\n    print(round(sharpe(backtest(synthetic_prices())), 3))\nmodule_under_test.py:39: in sharpe\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n/opt/anaconda3/lib/python3.13/site-packages/pandas/core/generic.py:1577: in __nonzero__\n    raise ValueError(\nE   ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\n=========================== short test summary info ============================\nERROR tests_generated/test_finding_2.py - ValueError: The truth value of a Se...\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 1.04s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.82s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "centered_rolling__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 4.5,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-qpqrvd8a/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.97s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-qkexovys/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 1.06s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 2,
+      "seconds": 22.2,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-fpnec3km/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 244 / 244 (100%)\nE       First 5 mismatches are at indices:\nE        [0, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE        [0, 1]: 2.0 (ACTUAL), 0.510677539145648 (DESIRED)\nE        [0, 2]: 2.0 (ACTUAL), 0.516209753177067 (DESIRED)\nE        [0, 3]: 2.0 (ACTUAL), 0.500685129548611 (DESIRED)\nE        [1, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE       Max absolute difference among violations: 1.82950382\nE       Max relative difference among violations: 1697.65720932\nE        ACTUAL: array([[ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],...\nE        DESIRED: array([[ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 3.43s\nFIXED SOURCE TEST\n>       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 244 / 244 (100%)\nE       First 5 mismatches are at indices:\nE        [0, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE        [0, 1]: 2.0 (ACTUAL), 0.510677539145648 (DESIRED)\nE        [0, 2]: 2.0 (ACTUAL), 0.516209753177067 (DESIRED)\nE        [0, 3]: 2.0 (ACTUAL), 0.500685129548611 (DESIRED)\nE        [1, 0]: 2.0 (ACTUAL), 0.461680098302845 (DESIRED)\nE       Max absolute difference among violations: 1.82950382\nE       Max relative difference among violations: 1697.65720932\nE        ACTUAL: array([[ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],...\nE        DESIRED: array([[ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],\nE              [ 4.616801e-01,  5.106775e-01,  5.162098e-01,  5.006851e-01],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.36s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.32s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-6bs0ttec/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 244 / 244 (100%)\nE       First 5 mismatches are at indices:\nE        [0, 0]: 2.0 (ACTUAL), 0.37419095356254767 (DESIRED)\nE        [0, 1]: 2.0 (ACTUAL), 0.40542578689258724 (DESIRED)\nE        [0, 2]: 2.0 (ACTUAL), 0.4053054658144877 (DESIRED)\nE        [0, 3]: 2.0 (ACTUAL), 0.409442045295996 (DESIRED)\nE        [1, 0]: 2.0 (ACTUAL), 0.37419095356254767 (DESIRED)\nE       Max absolute difference among violations: 1.98255207\nE       Max relative difference among violations: 10573.66793154\nE        ACTUAL: array([[ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],\nE              [ 2.      ,  2.      ,  2.      ,  2.      ],...\nE        DESIRED: array([[ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],\nE              [ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],\nE              [ 3.741910e-01,  4.054258e-01,  4.053055e-01,  4.094420e-01],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.45s\nFIXED SOURCE TEST\n\n==================================== ERRORS ====================================\n______________ ERROR collecting tests_generated/test_finding_2.py ______________\ntests_generated/test_finding_2.py:2: in <module>\n    import module_under_test as target\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/opt/anaconda3/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:184: in exec_module\n    exec(co, module.__dict__)\nmodule_under_test.py:45: in <module>\n    print(round(sharpe(backtest(synthetic_prices())), 3))\nmodule_under_test.py:43: in sharpe\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n/opt/anaconda3/lib/python3.13/site-packages/pandas/core/generic.py:1577: in __nonzero__\n    raise ValueError(\nE   ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\n=========================== short test summary info ============================\nERROR tests_generated/test_finding_2.py - ValueError: The truth value of a Se...\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 3.34s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.33s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "scaler_fit_all__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 7.7,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-ir0eptwr/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.45s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-iaw55e2p/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.39s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 2,
+      "seconds": 24.1,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-a4dnquid/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 173 / 244 (70.9%)\nE       First 5 mismatches are at indices:\nE        [2, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 1]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 2]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 3]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [3, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.,  0.,  0.,  0.],\nE              [ 0.,  0.,  0.,  0.],\nE              [-1., -1., -1., -1.],...\nE        DESIRED: array([[0., 0., 0., 0.],\nE              [0., 0., 0., 0.],\nE              [1., 1., 1., 1.],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 3.05s\nFIXED SOURCE TEST\n>       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 173 / 244 (70.9%)\nE       First 5 mismatches are at indices:\nE        [2, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 1]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 2]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 3]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [3, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.,  0.,  0.,  0.],\nE              [ 0.,  0.,  0.,  0.],\nE              [-1., -1., -1., -1.],...\nE        DESIRED: array([[0., 0., 0., 0.],\nE              [0., 0., 0., 0.],\nE              [1., 1., 1., 1.],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.83s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 3.25s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-esr198tu/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 173 / 244 (70.9%)\nE       First 5 mismatches are at indices:\nE        [2, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 1]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 2]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [2, 3]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE        [3, 0]: -1.0 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 2.\nE       Max relative difference among violations: 2.\nE        ACTUAL: array([[ 0.,  0.,  0.,  0.],\nE              [ 0.,  0.,  0.,  0.],\nE              [-1., -1., -1., -1.],...\nE        DESIRED: array([[0., 0., 0., 0.],\nE              [0., 0., 0., 0.],\nE              [1., 1., 1., 1.],...\n\ntests_generated/test_finding_2.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_2.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 2.95s\nFIXED SOURCE TEST\n\n==================================== ERRORS ====================================\n______________ ERROR collecting tests_generated/test_finding_2.py ______________\ntests_generated/test_finding_2.py:2: in <module>\n    import module_under_test as target\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/opt/anaconda3/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:184: in exec_module\n    exec(co, module.__dict__)\nmodule_under_test.py:50: in <module>\n    print(round(sharpe(backtest(synthetic_prices())), 3))\nmodule_under_test.py:48: in sharpe\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n/opt/anaconda3/lib/python3.13/site-packages/pandas/core/generic.py:1577: in __nonzero__\n    raise ValueError(\nE   ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\n=========================== short test summary info ============================\nERROR tests_generated/test_finding_2.py - ValueError: The truth value of a Se...\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 3.17s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 2.60s"
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "shuffled_split__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 8.8,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-8ygvusve/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.95s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-42ofvecs/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 2.72s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "raw": 2,
+      "seconds": 7.4,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "finding-specific fix did not pass invariant",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-izgtuqbg/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ">       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 36 / 244 (14.8%)\nE       First 5 mismatches are at indices:\nE        [52, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE        [52, 1]: -0.20248309420110355 (ACTUAL), 1.0 (DESIRED)\nE        [52, 2]: -0.22652367521877714 (ACTUAL), 1.0 (DESIRED)\nE        [52, 3]: -0.6570122826885028 (ACTUAL), 1.0 (DESIRED)\nE        [53, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 1.65701228\nE       Max relative difference among violations: 1.65701228\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.90s\nFIXED SOURCE TEST\n>       np.testing.assert_allclose(\n            np.asarray(before.iloc[: cutoff + 1]),\n            np.asarray(after.iloc[: cutoff + 1]),\n            rtol=1e-10,\n            atol=1e-12,\n            err_msg=\"INVARIANT_VIOLATED: future data changed past signals\",\n        )\nE       AssertionError: \nE       Not equal to tolerance rtol=1e-10, atol=1e-12\nE       INVARIANT_VIOLATED: future data changed past signals\nE       Mismatched elements: 36 / 244 (14.8%)\nE       First 5 mismatches are at indices:\nE        [52, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE        [52, 1]: -0.20248309420110355 (ACTUAL), 1.0 (DESIRED)\nE        [52, 2]: -0.22652367521877714 (ACTUAL), 1.0 (DESIRED)\nE        [52, 3]: -0.6570122826885028 (ACTUAL), 1.0 (DESIRED)\nE        [53, 0]: 0.08735691630511688 (ACTUAL), 1.0 (DESIRED)\nE       Max absolute difference among violations: 1.65701228\nE       Max relative difference among violations: 1.65701228\nE        ACTUAL: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\nE        DESIRED: array([[ 0.      ,  0.      ,  0.      ,  0.      ],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],\nE              [-0.518985, -0.327567, -0.819609, -0.012062],...\n\ntests_generated/test_finding_1.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_future_perturbation_does_not_change_past_signal\n1 failed in 0.90s",
+            "clean_sanity": ".                                                                        [100%]\n1 passed in 0.85s"
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-x6v0ts8e/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.88s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "asof_forward__clean.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 4.4,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-yzchdwr_/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.88s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-c558snjr/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.89s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "decoy_forward_label.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 4.0,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-0d4fdb1q/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.80s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-5aqke6pv/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.83s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    },
+    {
+      "notebook": "decoy_fixed_params.ipynb",
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "raw": 2,
+      "seconds": 4.2,
+      "findings": [
+        {
+          "cell_index": 3,
+          "line": 1,
+          "bug_class": "lookahead_shift",
+          "explanation": "Signal-derived positions use same-period returns without a one-bar shift.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "def backtest(prices, cost_bps=10):",
+            "new": "def backtest(prices, cost_bps=10):"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-_52wq2k3/tests_generated/test_finding_1.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.94s",
+            "clean_sanity": ""
+          }
+        },
+        {
+          "cell_index": 3,
+          "line": 9,
+          "bug_class": "fullsample_leak",
+          "explanation": "Signal normalization uses a full-series statistic that can include future observations.",
+          "severity": "high",
+          "is_bug": true,
+          "fix": {
+            "cell_index": 3,
+            "old": "    pnl_std = pnl.std()",
+            "new": "    pnl_std = pnl.expanding().std()"
+          },
+          "detector": "StaticDetector",
+          "status": "UNPROVEN",
+          "fixed_source": "def backtest(prices, cost_bps=10):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    gross = (positions * asset_returns).mean(axis=1)\n    turnover = positions.diff().abs().sum(axis=1).fillna(0.0)\n    return gross - turnover * cost_bps / 10_000\n\ndef sharpe(pnl):\n    pnl_std = pnl.expanding().std()\n    return float(pnl.mean() / pnl_std * np.sqrt(252)) if pnl_std > 0 else 0.0\n\nprint(round(sharpe(backtest(synthetic_prices())), 3))\n",
+          "reason": "generated invariant test passed on the candidate",
+          "test_file": "/var/folders/z5/7gcf34sn2bl1vdh3x0bzllfc0000gn/T/backtest-breaker-notebook-vr41r_sv/tests_generated/test_finding_2.py",
+          "runner_stdout_tail": {
+            "candidate": ".                                                                        [100%]\n1 passed in 0.82s",
+            "clean_sanity": ""
+          }
+        }
+      ]
+    }
+  ]
+}

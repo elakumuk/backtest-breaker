@@ -1,0 +1,29 @@
+{
+  "detector": "LLMDetector",
+  "dismissed": [],
+  "findings": [
+    {
+      "bug_class": "fullsample_leak",
+      "cell_index": 1,
+      "detector": "LLMDetector",
+      "explanation": "full_mean and full_std are computed over the entire sample (mean/std over all rows), leaking future information into the z-score at time t. Point-in-time expanding window is required.",
+      "fix": {
+        "cell_index": 1,
+        "new": "    full_mean = lagged.expanding().mean().shift(1)\n    full_std = lagged.expanding().std().shift(1).replace(0.0, np.nan)",
+        "old": "    full_mean = lagged.mean(axis=0)\n    full_std = lagged.std(axis=0).replace(0.0, np.nan)"
+      },
+      "fixed_source": "import numpy as np\nimport pandas as pd\n\ndef signal(prices):\n    \"\"\"Lag returns, but leak future observations through global z-score statistics.\"\"\"\n    lagged = prices.pct_change().shift(1)\n    full_mean = lagged.expanding().mean().shift(1)\n    full_std = lagged.expanding().std().shift(1).replace(0.0, np.nan)\n    return ((lagged - full_mean) / full_std).fillna(0.0)\n\ndef backtest(prices):\n    positions = signal(prices)\n    asset_returns = prices.pct_change().fillna(0.0)\n    return (positions * asset_returns).mean(axis=1)\n\ndef synthetic_prices():\n    rng = np.random.default_rng(42)\n    returns = rng.normal(0.001, 0.01, size=(120, 4))\n    return pd.DataFrame(100.0 * (1.0 + returns).cumprod(axis=0), columns=list(\"ABCD\"))\n",
+      "is_bug": true,
+      "line": 7,
+      "reason": "invariant failed on candidate, passed with finding fix, and passed on clean control",
+      "runner_stdout_tail": {
+        "candidate": "E       assert False\n\ntests_generated/test_finding_1.py:23: AssertionError\n___________________ test_signal_invariance_multiple_cutoffs ____________________\n\n    def test_signal_invariance_multiple_cutoffs():\n        prices = module_under_test.synthetic_prices()\n        for cutoff in [30, 60, 90]:\n            perturbed = prices.copy()\n            rng = np.random.default_rng(cutoff)\n            n_tail = len(prices) - cutoff - 1\n            tail_returns = rng.normal(0.08, 0.015, size=(n_tail, prices.shape[1]))\n            last_price = prices.iloc[cutoff].values\n            tail_prices = last_price * (1 + tail_returns).cumprod(axis=0)\n            perturbed.iloc[cutoff+1:, :] = tail_prices\n            sig_orig = module_under_test.signal(prices)\n            sig_pert = module_under_test.signal(perturbed)\n>           assert np.allclose(sig_orig.iloc[:cutoff+1].values, sig_pert.iloc[:cutoff+1].values, atol=1e-12, equal_nan=True), f'INVARIANT_VIOLATED: signal invariance failed at cutoff {cutoff}'\nE           AssertionError: INVARIANT_VIOLATED: signal invariance failed at cutoff 30\nE           assert False\nE            +  where False = <function allclose at 0x10b66d930>(array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...68e-02,\\n        -5.83261851e-01],\\n       [ 2.68447300e-01,  1.25359012e-01,  1.60658277e+00,\\n        -2.70467238e-01]]), array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-1.68114888, -1.92155531, -1.61182942, -1.72913697],\\n       [-1.46772949, -1.54100935, -1.18598639, -1.65133575]]), atol=1e-12, equal_nan=True)\nE            +    where <function allclose at 0x10b66d930> = np.allclose\nE            +    and   array([[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\\n         0.00000000e+00],\\n       [ 0.00000000e+00,  0.00000...68e-02,\\n        -5.83261851e-01],\\n       [ 2.68447300e-01,  1.25359012e-01,  1.60658277e+00,\\n        -2.70467238e-01]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...854 -1.705245  0.399576  0.243881\\n29 -0.573041 -1.410889  0.024976 -0.583262\\n30  0.268447  0.125359  1.606583 -0.270467.values\nE            +    and   array([[ 0.        ,  0.        ,  0.        ,  0.        ],\\n       [ 0.        ,  0.        ,  0.        ,  0.       ...    [-1.68114888, -1.92155531, -1.61182942, -1.72913697],\\n       [-1.46772949, -1.54100935, -1.18598639, -1.65133575]]) =            A         B         C         D\\n0   0.000000  0.000000  0.000000  0.000000\\n1   0.000000  0.000000  0.000000...888 -1.994471 -1.510969 -1.523402\\n29 -1.681149 -1.921555 -1.611829 -1.729137\\n30 -1.467729 -1.541009 -1.185986 -1.651336.values\n\ntests_generated/test_finding_1.py:41: AssertionError\n=========================== short test summary info ============================\nFAILED tests_generated/test_finding_1.py::test_signal_lookahead_invariance - ...\nFAILED tests_generated/test_finding_1.py::test_signal_invariance_multiple_cutoffs\n2 failed in 2.09s\nFIXED SOURCE TEST\n..                                                                       [100%]\n2 passed in 1.11s",
+        "clean_sanity": "..                                                                       [100%]\n2 passed in 1.12s"
+      },
+      "severity": "high",
+      "status": "PROVEN"
+    }
+  ],
+  "notebook": "leaky_norm.ipynb",
+  "seconds": 61.8
+}

@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -114,19 +116,37 @@ def _candidate_for_iteration(
     """Ask for and validate a candidate, making two correction retries if needed."""
     response: LLMResponse | None = None
     error_text: str | None = None
+    token_usage: dict[str, int] = {}
     for attempt in range(3):
-        response = chat(
-            messages,
-            json_schema=schema,
-            mock_policy={
-                "kind": "researcher", "seed": seed, "iteration": iteration,
-                "best_spec": best_spec.model_dump(mode="json") if best_spec else None,
-                "start": start.isoformat(), "end": end.isoformat(),
-            },
-        )
+        try:
+            response = chat(
+                messages,
+                json_schema=schema,
+                mock_policy={
+                    "kind": "researcher", "seed": seed, "iteration": iteration,
+                    "best_spec": best_spec.model_dump(mode="json") if best_spec else None,
+                    "start": start.isoformat(), "end": end.isoformat(),
+                },
+            )
+        except Exception as exc:
+            provider = os.getenv("PROVIDER", "mock").strip().lower()
+            model = os.getenv(f"{provider.upper()}_MODEL", "unknown")
+            response = LLMResponse(
+                content="", model=model, provider=provider,
+                usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            )
+            error_text = f"Model call failed after retries: {type(exc).__name__}: {exc}"
+            return None, response, error_text
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            value = response.usage.get(key)
+            if isinstance(value, (int, float)):
+                token_usage[key] = token_usage.get(key, 0) + int(value)
         try:
             parsed = StrategySpec.model_validate_json(response.content)
-            return _clamp_spec(parsed, start, end, iteration), response, None
+            return _clamp_spec(parsed, start, end, iteration), LLMResponse(
+                response.content, response.model, response.provider, token_usage,
+                response.tool_calls, response.finish_reason, response.arguments_error,
+            ), None
         except (ValueError, TypeError) as exc:
             error_text = f"Attempt {attempt + 1} validation error: {exc}"
             messages.extend([
@@ -134,6 +154,11 @@ def _candidate_for_iteration(
                 {"role": "user", "content": f"Your JSON did not validate. Correct this error and reply with JSON only: {error_text}"},
             ])
     assert response is not None
+    assert response is not None
+    response = LLMResponse(
+        response.content, response.model, response.provider, token_usage,
+        response.tool_calls, response.finish_reason, response.arguments_error,
+    )
     return None, response, error_text
 
 
@@ -174,9 +199,11 @@ def run_research(
     trials_path = folder / "trials.jsonl"
     with trials_path.open("a", encoding="utf-8") as trial_log:
         for iteration in range(1, n_iters + 1):
+            model_started = time.monotonic()
             spec, response, error = _candidate_for_iteration(
                 messages, schema, seed, iteration, best_spec, research_start, research_end,
             )
+            model_latency = time.monotonic() - model_started
             trial_id = f"trial_{iteration:03d}"
             if spec is not None:
                 result = run_backtest(spec, returns, rf)
@@ -201,6 +228,7 @@ def run_research(
                 "provider": response.provider,
                 "model": response.model,
                 "token_usage": response.usage,
+                "latency_seconds": round(model_latency, 4),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             trials.append(record)
@@ -260,6 +288,8 @@ def run_research(
         "prediction_provider": prediction_response.provider,
         "prediction_model": prediction_response.model,
         "prediction_token_usage": prediction_response.usage,
+        "total_tokens": sum((trial.get("token_usage") or {}).get("total_tokens", 0) for trial in trials)
+        + prediction_response.usage.get("total_tokens", 0),
     }
     (folder / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if verbose:

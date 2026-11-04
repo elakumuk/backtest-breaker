@@ -1,0 +1,45 @@
+{
+  "best_metrics": {
+    "annual_return": 0.15482453351941117,
+    "annual_turnover": 6.3982864463145495,
+    "max_drawdown": -0.5846794079659728,
+    "sharpe": 0.6798439616217803
+  },
+  "best_sharpe": 0.6798439616217803,
+  "best_spec": {
+    "cost_bps": 0.0,
+    "end": "2023-12-31",
+    "long_short": false,
+    "lookback_days": 210,
+    "name": "Aggressive Momentum 210-21 Top8 Monthly Zero-Cost In-Sample Max #13",
+    "rebalance": "M",
+    "signal_type": "momentum",
+    "skip_days": 21,
+    "start": "1990-01-01",
+    "top_n": 8
+  },
+  "failed_trials": 0,
+  "first_sharpe": 0.6397585432158589,
+  "holdout_start": "2024-01-01",
+  "n_trials": 25,
+  "predicted_holdout_sharpe": 0.32,
+  "prediction_model": "meta-models/muse-spark-open-1026",
+  "prediction_provider": "baseten",
+  "prediction_rationale": "In-sample max 0.68 on 34y with mean 0.52 sd 0.17 across 25 correlated trials gives SR0 about 0.35 via DSR. Posterior shrinkage to mean plus 50 percent decay for selection bias costs and nonstationarity implies holdout about 0.32.",
+  "prediction_token_usage": {
+    "completion_tokens": 8987,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 6210,
+      "audio_tokens": 0,
+      "reasoning_tokens": 8897,
+      "rejected_prediction_tokens": 13229
+    },
+    "prompt_tokens": 806,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 768
+    },
+    "total_tokens": 9793
+  },
+  "total_tokens": 172675
+}
