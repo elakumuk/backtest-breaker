@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtest Breaker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090b; --bg2:#0d0f13; --panel:#111419; --panel2:#151920; --line:#1e232b; --line2:#2a313b;
+  --ink:#eceef1; --ink2:#b4bac4; --muted:#7b8491; --dim:#4b535e;
+  --blue:#3d8ef0; --blue-glow:rgba(61,142,240,.55); --blue-soft:rgba(61,142,240,.14);
+  --orange:#ff6b2c; --orange-glow:rgba(255,107,44,.6); --orange-soft:rgba(255,107,44,.13);
+  --warn:#fab219; --good:#16c172; --bad:#ff4d4d;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(1200px 600px at 15% -10%,rgba(61,142,240,.10),transparent 60%),
+             radial-gradient(900px 500px at 95% 10%,rgba(255,107,44,.07),transparent 60%);}
+body:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:48px 48px;mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 70%)}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px}
+@media (max-width:640px){.wrap{padding:0 16px}}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:rgba(8,9,11,.72);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:22px;height:56px}
+.brand{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.brand i{width:9px;height:9px;border-radius:2px;background:var(--orange);box-shadow:0 0 12px var(--orange-glow)}
+nav a{color:var(--muted);text-decoration:none;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em}
+nav a:hover,nav a.on{color:var(--ink)}
+nav .sp{flex:1}
+.live{font-family:var(--mono);font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;border:1px solid var(--line2);padding:5px 10px;border-radius:999px}
+.live b{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good);animation:blink 2s infinite}
+@keyframes blink{50%{opacity:.35}}
+@media (max-width:760px){nav a.lnk{display:none}}
+
+/* hero */
+.hero{padding:76px 0 40px}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+h1{font-size:clamp(34px,5.4vw,64px);line-height:1.02;letter-spacing:-.035em;margin:14px 0 18px;font-weight:800;max-width:900px}
+h1 em{font-style:normal;color:var(--orange);text-shadow:0 0 28px var(--orange-glow)}
+.lede{font-size:18px;line-height:1.6;color:var(--ink2);max-width:720px;margin:0}
+.big{margin-top:44px;display:grid;grid-template-columns:auto 1fr auto auto;gap:28px;align-items:end;
+  border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--bg2));border-radius:18px;padding:28px 32px}
+.big .n{font-family:var(--mono);font-weight:500;font-size:clamp(44px,7vw,84px);line-height:.95;letter-spacing:-.04em}
+.big .l{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.big .blue{color:var(--blue);text-shadow:0 0 30px var(--blue-glow)}
+.big .orange{color:var(--orange);text-shadow:0 0 30px var(--orange-glow)}
+.arrow{height:2px;background:linear-gradient(90deg,var(--blue),var(--orange));position:relative;margin-bottom:46px;border-radius:2px;box-shadow:0 0 14px rgba(255,107,44,.35)}
+.arrow:after{content:"";position:absolute;right:-2px;top:-5px;border-left:10px solid var(--orange);border-top:6px solid transparent;border-bottom:6px solid transparent}
+.arrow span{position:absolute;left:50%;top:-30px;transform:translateX(-50%);font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap;background:var(--panel);padding:2px 8px;border:1px solid var(--line2);border-radius:6px}
+.verdict-chip{align-self:center;display:flex;flex-direction:column;gap:8px;padding-left:28px;border-left:1px solid var(--line2)}
+.chip{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:600;font-size:18px;letter-spacing:.06em;color:#0b0b0b;background:var(--warn);padding:8px 14px;border-radius:8px;box-shadow:0 0 24px rgba(250,178,25,.35)}
+.chip-sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.chip-sub s{color:var(--ink2)}
+@media (max-width:860px){.big{grid-template-columns:1fr;gap:18px}.arrow{margin:6px 0 18px}.verdict-chip{border-left:0;padding-left:0}}
+
+/* sections */
+section{padding:72px 0 24px}
+.sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:10px}
+.sec-num{font-family:var(--mono);font-size:13px;color:var(--orange)}
+h2{font-size:clamp(26px,3.4vw,38px);letter-spacing:-.025em;margin:0;font-weight:750}
+.sec-lede{color:var(--ink2);font-size:16.5px;line-height:1.6;max-width:760px;margin:6px 0 28px}
+.sec-lede b{color:var(--ink)}
+.panel{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--bg2));border-radius:16px;padding:22px 24px;position:relative}
+.panel h3{margin:0;font-size:14px;font-weight:600;letter-spacing:.01em}
+.panel .cap{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.legend{display:flex;gap:16px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.k{display:inline-block;width:16px;height:2px;border-radius:2px}
+.kd{display:inline-block;width:8px;height:8px;border-radius:50%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-a{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+@media (max-width:900px){.grid2,.grid-a{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--panel)}
+.stat .l{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:var(--mono);font-size:34px;font-weight:500;margin-top:8px;letter-spacing:-.03em}
+.stat .d{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:6px}
+.stat.flag{border-color:rgba(255,107,44,.55);box-shadow:0 0 0 1px rgba(255,107,44,.15),0 0 30px rgba(255,107,44,.10) inset}
+.stat.flag .v{color:var(--orange);text-shadow:0 0 22px var(--orange-glow)}
+.callout{border:1px solid rgba(255,107,44,.35);background:linear-gradient(90deg,var(--orange-soft),transparent 70%);border-radius:14px;padding:16px 20px;margin-bottom:18px;font-size:15.5px;line-height:1.6;color:var(--ink2)}
+.callout b{color:var(--ink)}
+.callout code{font-family:var(--mono);color:var(--orange);font-size:14px}
+
+/* charts */
+svg{display:block;width:100%;height:auto;overflow:visible}
+.ax text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;z-index:5;min-width:230px;max-width:320px;background:rgba(13,15,19,.96);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--ink2);box-shadow:0 12px 40px rgba(0,0,0,.5);opacity:0;transition:opacity .12s;line-height:1.55}
+.tip .t{color:var(--ink);font-weight:600;margin-bottom:6px;font-size:12.5px}
+.tip .row{display:flex;justify-content:space-between;gap:14px}
+.tip .row b{color:var(--ink);font-weight:500}
+.tip .nm{margin-top:8px;padding-top:8px;border-top:1px solid var(--line2);color:var(--muted);font-size:11px;font-family:var(--sans)}
+.replay{font-family:var(--mono);font-size:11.5px;color:var(--ink2);background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 12px;cursor:pointer}
+.replay:hover{color:var(--ink);border-color:var(--blue)}
+
+/* terminal */
+.term{font-family:var(--mono);font-size:13px;line-height:1.75;background:#07080a;border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-height:340px}
+.term .bar{display:flex;gap:6px;margin:-4px 0 12px}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#2a2f37}
+.term .ln{opacity:0;transform:translateY(4px);transition:opacity .35s,transform .35s;white-space:pre-wrap}
+.term .ln.on{opacity:1;transform:none}
+.term .p{color:var(--blue)} .term .o{color:var(--orange)} .term .m{color:var(--muted)} .term .w{color:var(--ink)} .term .y{color:var(--warn)}
+.term .hl{background:var(--orange-soft);border-left:2px solid var(--orange);margin:2px -18px;padding:2px 16px}
+.vcard{display:flex;flex-direction:column;gap:14px}
+.vbig{display:flex;align-items:center;gap:14px}
+.vbig .ic{width:46px;height:46px;border-radius:12px;background:var(--warn);color:#0b0b0b;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 30px rgba(250,178,25,.35)}
+.vbig .t{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.vbig .s{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.rules{border-top:1px solid var(--line)}
+.rules div{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--ink2)}
+.rules div b{font-family:var(--mono);color:var(--ink);font-weight:500}
+.override{border:1px dashed var(--line2);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--ink2);line-height:1.55}
+.override s{color:var(--muted)} .override b{color:var(--ink)}
+
+/* notebook */
+.nbtabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.nbtabs button{font-family:var(--mono);font-size:12.5px;background:var(--panel);color:var(--ink2);border:1px solid var(--line2);border-radius:8px;padding:8px 14px;cursor:pointer}
+.nbtabs button.on{color:var(--ink);border-color:var(--blue);box-shadow:0 0 0 1px var(--blue-soft),0 0 18px var(--blue-soft)}
+.fhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.badge{font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.08em;padding:5px 10px;border-radius:6px;background:var(--good);color:#04130a;box-shadow:0 0 18px rgba(22,193,114,.35)}
+.badge.un{background:var(--warn);color:#0b0b0b;box-shadow:none}
+.cls{font-family:var(--mono);font-size:12.5px;color:var(--blue)}
+.loc{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.expl{color:var(--ink2);font-size:15px;line-height:1.6;margin:0 0 14px}
+.code{font-family:var(--mono);font-size:12.8px;line-height:1.7;background:#07080a;border:1px solid var(--line);border-radius:12px;padding:12px 0;overflow-x:auto}
+.code .r{display:flex;white-space:pre;padding:0 16px}
+.code .r .no{width:34px;flex:none;color:var(--dim);text-align:right;padding-right:16px;user-select:none}
+.code .r.bad{background:linear-gradient(90deg,rgba(255,107,44,.20),rgba(255,107,44,.04));box-shadow:inset 3px 0 0 var(--orange)}
+.code .r.bad .no{color:var(--orange)}
+.code .kw{color:#c792ea} .code .st{color:#7fd88f} .code .nu{color:#f7b267} .code .cm{color:var(--dim)} .code .fn{color:#82aaff}
+.diff{margin-top:12px}
+.diff .r.add{background:rgba(22,193,114,.10);box-shadow:inset 3px 0 0 var(--good)}
+.diff .r.del{background:rgba(255,77,77,.09);box-shadow:inset 3px 0 0 var(--bad);color:#ffb3b3}
+.diff .r.add{color:#b9f5d6}
+.proof{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.proof>div{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel)}
+.proof .l{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em}
+.proof .v{font-family:var(--mono);font-size:14px;margin-top:6px}
+.proof .f{color:var(--bad)} .proof .p{color:var(--good)}
+@media (max-width:640px){.proof{grid-template-columns:1fr}}
+footer{margin-top:80px;border-top:1px solid var(--line);padding:26px 0 60px;color:var(--muted);font-family:var(--mono);font-size:11.5px;line-height:1.8}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.term .ln{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <div class="brand"><i></i>Backtest Breaker</div>
+  <a class="lnk" href="#overfit">01 Overfit</a><a class="lnk" href="#break">02 Break</a><a class="lnk" href="#notebook">03 Notebook</a>
+  <div class="sp"></div>
+  <div class="live"><b></b><span id="modelName">muse spark</span></div>
+</div></nav>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker">Live run · Muse Spark · sealed holdout</div>
+    <h1>An AI that tries to <em>break</em> your backtest before the market does.</h1>
+    <p class="lede">One Muse Spark agent searches for a trading strategy. A second one attacks it, writes down a prediction, and opens data nobody has touched. Code computes every number and delivers the verdict.</p>
+    <div class="big reveal">
+      <div><div class="n blue" data-count="in_sample_best_sharpe">0.00</div><div class="l">In-sample Sharpe</div></div>
+      <div class="arrow"><span id="predLbl">predicted 0.32</span></div>
+      <div><div class="n orange" data-count="actual_holdout_sharpe">0.00</div><div class="l">Sealed holdout, 2024 →</div></div>
+      <div class="verdict-chip"><span class="chip">▲ FRAGILE</span><span class="chip-sub">model said <s>SURVIVES</s> · code overruled</span></div>
+    </div>
+  </header>
+
+  <section id="overfit">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Watch it overfit</h2></div>
+    <p class="sec-lede">We gave Muse Spark 25 tries to push in-sample Sharpe up. <b>It mostly refused.</b> It named its strategies “not optimized for in-sample Sharpe” and kept raising its own cost assumptions. Except once.</p>
+    <div class="stats reveal" id="stats"></div>
+    <div class="callout reveal" id="callout"></div>
+    <div class="panel reveal" id="trialPanel">
+      <div class="ph">
+        <div><h3>In-sample Sharpe by trial</h3><div class="cap">hover any trial for the spec Muse Spark proposed</div></div>
+        <div class="legend"><span><i class="k" style="background:var(--blue)"></i>trial Sharpe</span><span><i class="k" style="background:var(--muted)"></i>best so far</span><span><i class="kd" style="background:var(--orange)"></i>selected (cost = 0)</span><button class="replay" id="replay">↻ replay run</button></div>
+      </div>
+      <svg id="trialChart" viewBox="0 0 1100 340"></svg>
+      <div class="ph" style="margin:18px 0 6px"><div><h3>Trading cost the model assumed</h3><div class="cap">basis points per trade · same trials, same x-axis</div></div></div>
+      <svg id="costChart" viewBox="0 0 1100 170"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section id="break">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Break it</h2></div>
+    <p class="sec-lede">A second Muse Spark agent attacks the winner with tools. Before the sealed holdout can open, it must <b>write down a prediction</b>. The vault opens once, and a code rubric decides.</p>
+    <div class="grid-a">
+      <div class="panel reveal"><div class="ph"><div><h3>Auditor session</h3><div class="cap">tool calls chosen by the model · computed by code</div></div></div>
+        <div class="term" id="term"><div class="bar"><i></i><i></i><i></i></div></div></div>
+      <div class="panel reveal vcard" id="verdict"></div>
+    </div>
+    <div class="panel reveal" style="margin-top:18px">
+      <div class="ph"><div><h3>What the backtest said vs. what new data said</h3><div class="cap">the prediction was logged before the holdout opened</div></div>
+        <div class="legend"><span><i class="kd" style="background:var(--blue)"></i>backtest</span><span><i class="kd" style="background:var(--orange)"></i>out of sample</span></div></div>
+      <svg id="ladder" viewBox="0 0 1100 250"></svg>
+    </div>
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel reveal"><div class="ph"><div><h3>Walk-forward, year by year</h3><div class="cap">dashed: median fold Sharpe</div></div></div><svg id="wf" viewBox="0 0 540 250"></svg></div>
+      <div class="panel reveal"><div class="ph"><div><h3>Selected strategy, in-sample</h3><div class="cap">growth of $1 · log scale · trial 13 at zero cost</div></div></div><svg id="eq" viewBox="0 0 540 250"></svg></div>
+    </div>
+  </section>
+
+  <section id="notebook">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Audit my notebook</h2></div>
+    <p class="sec-lede">Muse Spark reads a notebook, finds the look-ahead leak, and proposes a fix. A finding is <b>Proven</b> only if a generated test fails on the original code, passes with the fix, and passes on a clean control.</p>
+    <div class="nbtabs" id="nbtabs"></div>
+    <div class="panel reveal" id="finding"></div>
+  </section>
+
+  <footer>
+    Backtest Breaker audits strategies. It does not give investment advice.<br>
+    Every number on this page is read from saved live-run files (demo/MANIFEST.json); none is typed by hand or computed by the model.<br>
+    Built during the Meta AI Developer Hackathon, Oct 26 – Nov 4 2026 · <span id="runId"></span>
+  </footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+(() => {
+const D = window.BB_DATA, M = D.manifest, NS = "http://www.w3.org/2000/svg";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = s => document.querySelector(s);
+const f2 = v => (v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const lin = (d0, d1, r0, r1) => v => r0 + (v - d0) / (d1 - d0) * (r1 - r0);
+$("#modelName").textContent = M.model.replace("meta-models/", "");
+$("#runId").textContent = M.run_id;
+$("#predLbl").textContent = "predicted " + M.predicted_holdout_sharpe.toFixed(2) + " · logged first";
+
+function defs(svg) {
+  const d = el("defs", {}, svg);
+  for (const [id, sd] of [["glowB", 3.2], ["glowO", 4.5]]) {
+    const f = el("filter", {id, x: "-50%", y: "-50%", width: "200%", height: "200%"}, d);
+    el("feGaussianBlur", {stdDeviation: sd, result: "b"}, f);
+    const mg = el("feMerge", {}, f); el("feMergeNode", {in: "b"}, mg); el("feMergeNode", {in: "SourceGraphic"}, mg);
+  }
+  const g = el("linearGradient", {id: "areaB", x1: 0, y1: 0, x2: 0, y2: 1}, d);
+  el("stop", {offset: "0%", "stop-color": "#3d8ef0", "stop-opacity": .28}, g); el("stop", {offset: "100%", "stop-color": "#3d8ef0", "stop-opacity": 0}, g);
+}
+function yaxis(svg, y, ticks, x0, x1, fmt, zeroAt) {
+  const g = el("g", {class: "ax"}, svg);
+  ticks.forEach(t => {
+    el("line", {x1: x0, x2: x1, y1: y(t), y2: y(t), stroke: t === zeroAt ? "#3a424e" : "#1a1f26", "stroke-width": 1}, g);
+    const tx = el("text", {x: x0 - 10, y: y(t) + 4, "text-anchor": "end"}, g); tx.textContent = fmt(t);
+  });
+}
+
+/* ---------------- hero count-up ---------------- */
+function countUp() {
+  document.querySelectorAll("[data-count]").forEach(n => {
+    const target = M[n.dataset.count], t0 = performance.now(), dur = reduce ? 0 : 1400;
+    const step = now => { const p = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - p, 3); n.textContent = (target * e).toFixed(2); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---------------- stats + callout ---------------- */
+const stats = [
+  ["First trial", M.first_trial_sharpe, "sharpe, in-sample", false],
+  ["Median trial", M.median_trial_sharpe, `${M.n_trials} trials · ${M.failed_trials} failed`, false],
+  ["Best trial", M.in_sample_best_sharpe, `trial ${M.best_trial_iter} · cost ${M.best_trial_cost_bps} bps`, true],
+  ["Best at 10 bps", M.best_sharpe_at_10bps, `${f2(M.best_sharpe_at_10bps - M.in_sample_best_sharpe)} once costs are real`, false],
+];
+$("#stats").innerHTML = stats.map(([l, v, d, fl]) => `<div class="stat${fl ? " flag" : ""}"><div class="l">${l}</div><div class="v">${v.toFixed(2)}</div><div class="d">${esc(d)}</div></div>`).join("");
+$("#callout").innerHTML = `<b>The winner cheated once.</b> In trial ${M.best_trial_iter} Muse Spark set <code>cost_bps = 0</code>. Trading became free, and that trial became the best in-sample result at <b>${M.in_sample_best_sharpe.toFixed(2)}</b>. The same strategy at a realistic 10 bps scores ${M.best_sharpe_at_10bps.toFixed(2)}.`;
+
+/* ---------------- trial + cost charts (linked hover) ---------------- */
+const T = D.trials, N = T.length, best = M.best_trial_iter;
+const L = 64, R = 1100 - 130, x = lin(0.5, N + 0.5, L, R);
+const tip = $("#tip"), panel = $("#trialPanel");
+let hoverLayers = [];
+function trialChart(animate) {
+  const svg = $("#trialChart"); svg.innerHTML = ""; defs(svg);
+  const y = lin(-0.3, 0.8, 310, 20);
+  yaxis(svg, y, [-0.2, 0, 0.2, 0.4, 0.6, 0.8], L, R, v => v.toFixed(1), 0);
+  const ax = el("g", {class: "ax"}, svg);
+  T.forEach(t => { if (t.trial % 2) { const tx = el("text", {x: x(t.trial), y: 332, "text-anchor": "middle"}, ax); tx.textContent = t.trial; } });
+  // median
+  el("line", {x1: L, x2: R, y1: y(M.median_trial_sharpe), y2: y(M.median_trial_sharpe), stroke: "#6b7380", "stroke-dasharray": "4 5"}, svg);
+  const ml = el("text", {x: R + 12, y: y(M.median_trial_sharpe) + 4, fill: "#7b8491", "font-family": "IBM Plex Mono, monospace", "font-size": 11}, svg); ml.textContent = "median " + M.median_trial_sharpe.toFixed(2);
+  // best so far step
+  let d = "";
+  T.forEach((t, i) => { const px = x(t.trial), py = y(t.best_so_far); d += i ? `H${px}V${py}` : `M${px},${py}`; });
+  d += `H${x(N)}`;
+  const bs = el("path", {d, fill: "none", stroke: "#8a93a0", "stroke-width": 1.4, opacity: .7}, svg);
+  const bl = el("text", {x: R + 12, y: y(T[N - 1].best_so_far) + 4, fill: "#b4bac4", "font-family": "IBM Plex Mono, monospace", "font-size": 11}, svg); bl.textContent = "best so far";
+  // area + line
+  const pts = T.map(t => [x(t.trial), y(t.sharpe)]);
+  const ld = pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join("");
+  const area = el("path", {d: ld + `L${pts[N - 1][0]},${y(-0.3)}L${pts[0][0]},${y(-0.3)}Z`, fill: "url(#areaB)", opacity: 0}, svg);
+  const line = el("path", {d: ld, fill: "none", stroke: "#3d8ef0", "stroke-width": 2.4, filter: "url(#glowB)", "stroke-linejoin": "round"}, svg);
+  const len = line.getTotalLength();
+  const dots = T.map((t, i) => {
+    const isB = t.trial === best;
+    const c = el("circle", {cx: x(t.trial), cy: y(t.sharpe), r: isB ? 7 : 4.2, fill: isB ? "#ff6b2c" : "#3d8ef0", stroke: "#08090b", "stroke-width": 2, filter: isB ? "url(#glowO)" : "", opacity: 0}, svg);
+    return c;
+  });
+  // annotation for selected trial
+  const bx = x(best), by = y(T[best - 1].sharpe);
+  const ann = el("g", {opacity: 0}, svg);
+  const ring = el("circle", {cx: bx, cy: by, r: 7, fill: "none", stroke: "#ff6b2c", "stroke-width": 2}, ann);
+  if (!reduce) { el("animate", {attributeName: "r", values: "7;20;7", dur: "2.2s", repeatCount: "indefinite"}, ring); el("animate", {attributeName: "opacity", values: "1;0;1", dur: "2.2s", repeatCount: "indefinite"}, ring); }
+  el("line", {x1: bx, y1: by - 10, x2: bx + 40, y2: by - 48, stroke: "#ff6b2c", "stroke-width": 1.2}, ann);
+  el("rect", {x: bx + 40, y: by - 76, width: 252, height: 44, rx: 8, fill: "#140c08", stroke: "#ff6b2c", "stroke-opacity": .6}, ann);
+  const a1 = el("text", {x: bx + 54, y: by - 58, fill: "#ff6b2c", "font-family": "IBM Plex Mono, monospace", "font-size": 12, "font-weight": 600}, ann); a1.textContent = `TRIAL ${best} · cost_bps = 0`;
+  const a2 = el("text", {x: bx + 54, y: by - 41, fill: "#b4bac4", "font-family": "IBM Plex Mono, monospace", "font-size": 11.5}, ann); a2.textContent = `in-sample Sharpe ${M.in_sample_best_sharpe.toFixed(2)} · "best"`;
+  // hover column
+  const hl = el("line", {y1: 14, y2: 312, stroke: "#4b535e", "stroke-width": 1, opacity: 0}, svg);
+  hoverLayers = [hl];
+  if (!animate || reduce) {
+    dots.forEach(c => c.setAttribute("opacity", 1)); area.setAttribute("opacity", 1); ann.setAttribute("opacity", 1);
+  } else {
+    line.style.strokeDasharray = len; line.style.strokeDashoffset = len; bs.style.opacity = 0; bl.style.opacity = 0;
+    const dur = 3200, t0 = performance.now();
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      line.style.strokeDashoffset = len * (1 - p);
+      const upto = p * (N - 1);
+      dots.forEach((c, i) => { if (i <= upto + 0.01) c.setAttribute("opacity", 1); });
+      if (p < 1) requestAnimationFrame(step); else {
+        area.style.transition = "opacity .8s"; area.setAttribute("opacity", 1);
+        bs.style.transition = bl.style.transition = "opacity .8s"; bs.style.opacity = .7; bl.style.opacity = 1;
+        ann.style.transition = "opacity .6s"; ann.setAttribute("opacity", 1);
+      }
+    };
+    requestAnimationFrame(step);
+  }
+}
+function costChart(animate) {
+  const svg = $("#costChart"); svg.innerHTML = ""; defs(svg);
+  const y = lin(0, 110, 140, 12);
+  yaxis(svg, y, [0, 50, 100], L, R, v => v, 0);
+  T.forEach((t, i) => {
+    const h = 140 - y(t.cost_bps), w = 14, px = x(t.trial) - w / 2;
+    if (t.cost_bps > 0) {
+      const r = el("path", {d: `M${px},140V${140 - h + 4}a4,4 0 0 1 4,-4h${w - 8}a4,4 0 0 1 4,4V140Z`, fill: "#3d8ef0", opacity: .85}, svg);
+      if (animate && !reduce) { r.style.transformOrigin = `${x(t.trial)}px 140px`; r.style.transform = "scaleY(0)"; r.style.transition = `transform .6s cubic-bezier(.2,.8,.2,1) ${i * 55}ms`; requestAnimationFrame(() => requestAnimationFrame(() => r.style.transform = "scaleY(1)")); }
+    } else {
+      el("path", {d: `M${x(t.trial)},132l7,12h-14z`, fill: "#ff6b2c", filter: "url(#glowO)"}, svg);
+      const tx = el("text", {x: x(t.trial), y: 118, "text-anchor": "middle", fill: "#ff6b2c", "font-family": "IBM Plex Mono, monospace", "font-size": 12, "font-weight": 600}, svg); tx.textContent = "0 bps";
+    }
+  });
+  const ax = el("g", {class: "ax"}, svg);
+  T.forEach(t => { if (t.trial % 2) { const tx = el("text", {x: x(t.trial), y: 162, "text-anchor": "middle"}, ax); tx.textContent = t.trial; } });
+  const hl = el("rect", {y: 8, height: 134, width: 22, rx: 4, fill: "#ffffff", opacity: 0}, svg);
+  hoverLayers.push(hl);
+}
+function bindHover() {
+  for (const id of ["#trialChart", "#costChart"]) {
+    const svg = $(id);
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect(), vx = (ev.clientX - r.left) / r.width * 1100;
+      const i = Math.max(1, Math.min(N, Math.round((vx - L) / (R - L) * N + 0.5)));
+      const t = T[i - 1], px = x(i);
+      hoverLayers[0].setAttribute("x1", px); hoverLayers[0].setAttribute("x2", px); hoverLayers[0].setAttribute("opacity", .9);
+      hoverLayers[1].setAttribute("x", px - 11); hoverLayers[1].setAttribute("opacity", .05);
+      tip.innerHTML = `<div class="t">Trial ${t.trial}${t.trial === best ? ' <span style="color:var(--orange)">· selected</span>' : ""}</div>
+        <div class="row"><span>Sharpe</span><b>${t.sharpe.toFixed(3)}</b></div>
+        <div class="row"><span>cost</span><b style="${t.cost_bps === 0 ? "color:var(--orange)" : ""}">${t.cost_bps} bps</b></div>
+        <div class="row"><span>signal</span><b>${t.signal}</b></div>
+        <div class="row"><span>lookback / skip</span><b>${t.lookback_days}d / ${t.skip_days}d</b></div>
+        <div class="row"><span>top N · ${t.long_short ? "long-short" : "long only"}</span><b>${t.top_n}</b></div>
+        <div class="nm">“${esc(t.name)}”</div>`;
+      const pr = panel.getBoundingClientRect();
+      let left = ev.clientX - pr.left + 18; if (left > pr.width - 330) left = ev.clientX - pr.left - 340;
+      tip.style.left = left + "px"; tip.style.top = (ev.clientY - pr.top - 20) + "px"; tip.style.opacity = 1;
+    });
+    svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; hoverLayers.forEach(h => h.setAttribute("opacity", 0)); });
+  }
+}
+
+/* ---------------- auditor terminal ---------------- */
+const rep = D.report, pred = D.events.find(e => e.event === "prediction"), opened = D.events.find(e => e.event === "opened");
+function termLines() {
+  const L2 = [];
+  for (const s of rep.trace) {
+    const r = s.result || {};
+    if (s.tool === "open_holdout") {
+      L2.push(`<span class="o">$ register_prediction</span>`);
+      L2.push(`<span class="hl"><span class="m">  → </span><span class="w">holdout Sharpe ≈ ${pred.predicted_sharpe.toFixed(2)}</span> <span class="m">(written before the vault opens)</span></span>`);
+      L2.push(`<span class="o">$ open_holdout</span> <span class="m">--once --verify-sha256</span>`);
+      L2.push(`<span class="hl"><span class="m">  → </span>🔓 <span class="w">holdout Sharpe ${r.sharpe.toFixed(2)}</span> <span class="m">· sha256 ${opened.sha256.slice(0, 10)}… ok</span></span>`);
+      continue;
+    }
+    const map = {
+      walk_forward: () => `${r.folds.length} yearly folds · median Sharpe ${r.median_sharpe.toFixed(2)}`,
+      param_sensitivity: () => `±20% lookback/top N → spread ${r.spread.toFixed(2)}`,
+      cost_stress: () => Object.entries(r).sort((a, b) => +a[0] - +b[0]).map(([k, v]) => `${k}bps ${v.toFixed(2)}`).join(" · "),
+      deflated_sharpe: () => `DSR ${r.dsr.toFixed(2)} after ${M.n_trials} trials`,
+      pbo: () => `PBO ${r.pbo.toFixed(2)}`,
+    };
+    L2.push(`<span class="p">$ ${s.tool}</span>${s.auto_run ? ' <span class="m">[run by code]</span>' : ""}`);
+    L2.push(`<span class="m">  → </span><span class="w">${map[s.tool] ? map[s.tool]() : esc(JSON.stringify(r)).slice(0, 90)}</span>`);
+  }
+  L2.push(`<span class="m">$ rubric --final</span>`);
+  L2.push(`<span class="y">  ▲ FRAGILE</span> <span class="m">· model verdict: ${rep.model_verdict} (overruled)</span>`);
+  return L2;
+}
+function playTerm() {
+  const t = $("#term"); t.querySelectorAll(".ln").forEach(n => n.remove());
+  termLines().forEach((h, i) => { const d = document.createElement("div"); d.className = "ln"; d.innerHTML = h; t.appendChild(d); setTimeout(() => d.classList.add("on"), reduce ? 0 : 160 + i * 230); });
+}
+$("#verdict").innerHTML = `
+  <div class="cap" style="font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Verdict · code rubric</div>
+  <div class="vbig"><div class="ic">▲</div><div><div class="t">Fragile</div><div class="s">${rep.reasons.length} rubric rules triggered</div></div></div>
+  <div class="rules">${rep.reasons.map(r => { const t = r.rule.split(": ").pop(); return `<div><span>${esc(t[0].toUpperCase() + t.slice(1))}</span><b>${r.value.toFixed(2)}</b></div>`; }).join("")}
+    <div><span>Prediction error</span><b>${f2(M.actual_holdout_sharpe - M.predicted_holdout_sharpe)}</b></div></div>
+  <div class="override">Muse Spark's own verdict: <s>${rep.model_verdict}</s>. <b>The model explains; code decides.</b> Every number in its explanation matched tool output (grounded: ${rep.grounded}).</div>
+  <div class="rules" style="margin-top:2px">
+    <div><span>Holdout window</span><b>${M.holdout_start} →</b></div>
+    <div><span>Times the vault was opened</span><b>1</b></div>
+    <div><span>Holdout data hash</span><b>${opened.sha256.slice(0, 12)}…</b></div>
+    <div><span>Auditor tokens</span><b>${M.auditor_total_tokens.toLocaleString()}</b></div>
+  </div>`;
+
+/* ---------------- ladder ---------------- */
+function ladder(animate) {
+  const svg = $("#ladder"); svg.innerHTML = ""; defs(svg);
+  const rows = [
+    ["In-sample best · trial 13 · 0 bps", M.in_sample_best_sharpe, "#3d8ef0"],
+    ["Same strategy at 10 bps", M.best_sharpe_at_10bps, "#3d8ef0"],
+    ["Auditor's prediction · logged first", M.predicted_holdout_sharpe, "#ff6b2c"],
+    ["Sealed holdout · actual · 2024 →", M.actual_holdout_sharpe, "#ff6b2c"],
+  ];
+  const X0 = 300, X1 = 1040, xs = lin(0, 0.8, X0, X1);
+  const ax = el("g", {class: "ax"}, svg);
+  [0, 0.2, 0.4, 0.6, 0.8].forEach(v => { el("line", {x1: xs(v), x2: xs(v), y1: 10, y2: 214, stroke: v ? "#1a1f26" : "#3a424e"}, ax); const t = el("text", {x: xs(v), y: 236, "text-anchor": "middle"}, ax); t.textContent = v.toFixed(1); });
+  rows.forEach(([lab, v, c], i) => {
+    const yy = 36 + i * 50;
+    const t = el("text", {x: X0 - 18, y: yy + 4, "text-anchor": "end", fill: "#b4bac4", "font-family": "Inter, sans-serif", "font-size": 13.5}, svg); t.textContent = lab;
+    const stem = el("line", {x1: xs(0), x2: xs(0), y1: yy, y2: yy, stroke: c, "stroke-opacity": .35, "stroke-width": 2}, svg);
+    const dot = el("circle", {cx: xs(0), cy: yy, r: 8, fill: c, stroke: "#08090b", "stroke-width": 2.5, filter: c === "#ff6b2c" ? "url(#glowO)" : "url(#glowB)"}, svg);
+    const val = el("text", {x: xs(v) + 16, y: yy + 5, fill: "#eceef1", "font-family": "IBM Plex Mono, monospace", "font-size": 14, "font-weight": 500, opacity: 0}, svg); val.textContent = v.toFixed(2);
+    const go = () => { stem.setAttribute("x2", xs(v)); dot.setAttribute("cx", xs(v)); val.setAttribute("opacity", 1); };
+    if (!animate || reduce) go(); else { [stem, dot].forEach(n => n.style.transition = `all 1.1s cubic-bezier(.2,.8,.2,1) ${i * 180}ms`); val.style.transition = `opacity .4s ${900 + i * 180}ms`; setTimeout(go, 30); }
+  });
+  // drop bracket
+  const yA = 36, yD = 36 + 3 * 50, bx = xs(M.in_sample_best_sharpe) + 70;
+  const br = el("g", {opacity: animate && !reduce ? 0 : 1}, svg);
+  el("path", {d: `M${bx - 8},${yA} H${bx} V${yD} H${bx - 8}`, fill: "none", stroke: "#ff6b2c", "stroke-opacity": .6}, br);
+  const bt = el("text", {x: bx + 10, y: (yA + yD) / 2 + 5, fill: "#ff6b2c", "font-family": "IBM Plex Mono, monospace", "font-size": 13, "font-weight": 600}, br); bt.textContent = f2(M.actual_holdout_sharpe - M.in_sample_best_sharpe);
+  if (animate && !reduce) { br.style.transition = "opacity .6s 1.7s"; setTimeout(() => br.setAttribute("opacity", 1), 30); }
+}
+
+/* ---------------- walk-forward ---------------- */
+function wf(animate) {
+  const svg = $("#wf"); svg.innerHTML = ""; defs(svg);
+  const F = D.walk_forward.folds, n = F.length, X0 = 46, X1 = 530, xb = lin(0, n, X0, X1), y = lin(-1.25, 3, 220, 10);
+  yaxis(svg, y, [-1, 0, 1, 2, 3], X0, X1, v => v.toFixed(0), 0);
+  const tipEl = el("text", {x: X1, y: 12, "text-anchor": "end", fill: "#b4bac4", "font-family": "IBM Plex Mono, monospace", "font-size": 11.5}, svg);
+  F.forEach((f, i) => {
+    const w = (X1 - X0) / n * 0.62, px = xb(i) + ((X1 - X0) / n - w) / 2, v = f.sharpe, y0 = y(0), yv = y(v);
+    const r = el("rect", {x: px, width: w, y: Math.min(y0, yv), height: Math.max(1, Math.abs(yv - y0)), rx: 2.5, fill: v >= 0 ? "#3d8ef0" : "#ff6b2c", opacity: v >= 0 ? .85 : .95}, svg);
+    const yr = f.test_start.slice(0, 4);
+    if (+yr % 5 === 0) { const t = el("text", {x: px + w / 2, y: 242, "text-anchor": "middle", fill: "#7b8491", "font-family": "IBM Plex Mono, monospace", "font-size": 11}, svg); t.textContent = yr; }
+    r.addEventListener("pointerenter", () => { tipEl.textContent = `${yr} · Sharpe ${v.toFixed(2)}`; r.setAttribute("opacity", 1); });
+    r.addEventListener("pointerleave", () => { tipEl.textContent = ""; r.setAttribute("opacity", v >= 0 ? .85 : .95); });
+    if (animate && !reduce) { r.style.transformOrigin = `0 ${y0}px`; r.style.transform = "scaleY(0)"; r.style.transition = `transform .5s cubic-bezier(.2,.8,.2,1) ${i * 35}ms`; requestAnimationFrame(() => requestAnimationFrame(() => r.style.transform = "scaleY(1)")); }
+  });
+  const med = D.walk_forward.median_sharpe;
+  el("line", {x1: X0, x2: X1, y1: y(med), y2: y(med), stroke: "#eceef1", "stroke-opacity": .5, "stroke-dasharray": "4 5"}, svg);
+}
+
+/* ---------------- equity (log) ---------------- */
+function eq(animate) {
+  const svg = $("#eq"); svg.innerHTML = ""; defs(svg);
+  const E = D.equity, X0 = 52, X1 = 530, n = E.length, xs = lin(0, n - 1, X0, X1);
+  const lg = v => Math.log10(v), y = v => lin(lg(0.5), lg(300), 220, 10)(lg(v));
+  yaxis(svg, y, [1, 10, 100], X0, X1, v => "$" + v, -1);
+  E.forEach(([d], i) => { if (d.slice(5, 7) === "01" && +d.slice(8, 10) <= 7 && +d.slice(0, 4) % 5 === 0) { const t = el("text", {x: xs(i), y: 242, "text-anchor": "middle", fill: "#7b8491", "font-family": "IBM Plex Mono, monospace", "font-size": 11}, svg); t.textContent = d.slice(0, 4); } });
+  const pts = E.map(([, v], i) => [xs(i), y(v)]);
+  const ld = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join("");
+  el("path", {d: ld + `L${X1},220L${X0},220Z`, fill: "url(#areaB)"}, svg);
+  const line = el("path", {d: ld, fill: "none", stroke: "#3d8ef0", "stroke-width": 1.8, filter: "url(#glowB)"}, svg);
+  const last = E[n - 1];
+  const lt = el("text", {x: X1, y: pts[n - 1][1] - 12, "text-anchor": "end", fill: "#eceef1", "font-family": "IBM Plex Mono, monospace", "font-size": 12}, svg); lt.textContent = "$" + last[1].toFixed(0);
+  const cross = el("line", {y1: 10, y2: 220, stroke: "#4b535e", opacity: 0}, svg);
+  const dot = el("circle", {r: 5, fill: "#3d8ef0", stroke: "#08090b", "stroke-width": 2, opacity: 0}, svg);
+  const lab = el("text", {x: X0 + 8, y: 22, fill: "#b4bac4", "font-family": "IBM Plex Mono, monospace", "font-size": 11.5}, svg);
+  svg.addEventListener("pointermove", ev => { const r = svg.getBoundingClientRect(), vx = (ev.clientX - r.left) / r.width * 540; const i = Math.max(0, Math.min(n - 1, Math.round((vx - X0) / (X1 - X0) * (n - 1)))); cross.setAttribute("x1", pts[i][0]); cross.setAttribute("x2", pts[i][0]); cross.setAttribute("opacity", 1); dot.setAttribute("cx", pts[i][0]); dot.setAttribute("cy", pts[i][1]); dot.setAttribute("opacity", 1); lab.textContent = `${E[i][0].slice(0, 7)} · $${E[i][1].toFixed(2)}`; });
+  svg.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); lab.textContent = ""; });
+  if (animate && !reduce) { const len = line.getTotalLength(); line.style.strokeDasharray = len; line.style.strokeDashoffset = len; line.style.transition = "stroke-dashoffset 2.2s ease"; requestAnimationFrame(() => requestAnimationFrame(() => line.style.strokeDashoffset = 0)); }
+}
+
+/* ---------------- notebook ---------------- */
+const KW = /\b(import|from|as|def|return|for|in|if|else|elif|while|lambda|None|True|False|and|or|not|with|class)\b/g;
+function hlpy(s) {
+  let h = esc(s);
+  const toks = []; h = h.replace(/(&quot;&quot;&quot;[\s\S]*?&quot;&quot;&quot;|&quot;[^&]*?&quot;|'[^']*?'|#.*$)/g, m => { toks.push(m); return "\u0001" + String.fromCharCode(0xE000 + toks.length - 1) + "\u0001"; });
+  h = h.replace(KW, '<span class="kw">$1</span>').replace(/\b(\d+\.?\d*)\b/g, '<span class="nu">$1</span>').replace(/\b([a-z_][a-z0-9_]*)(?=\()/gi, '<span class="fn">$1</span>');
+  return h.replace(/\u0001([\uE000-\uF8FF])\u0001/g, (_, c) => { const i = c.charCodeAt(0) - 0xE000; return toks[i].startsWith("#") ? `<span class="cm">${toks[i]}</span>` : `<span class="st">${toks[i]}</span>`; });
+}
+const NB = D.notebooks, names = Object.keys(NB);
+function showNb(name) {
+  document.querySelectorAll("#nbtabs button").forEach(b => b.classList.toggle("on", b.dataset.n === name));
+  const {report, cells} = NB[name], f = (report.findings || [])[0];
+  if (!f) { $("#finding").innerHTML = `<div class="expl">No look-ahead findings.</div>`; return; }
+  const ci = +f.cell_index, bad = +f.line, lines = (cells[ci] || "").split("\n");
+  const fix = f.fix || {};
+  const code = lines.map((ln, i) => `<div class="r${i + 1 === bad ? " bad" : ""}"><span class="no">${i + 1}</span><span>${hlpy(ln) || " "}</span></div>`).join("");
+  const del = (fix.old || "").split("\n").map(l => `<div class="r del"><span class="no">−</span><span>${esc(l)}</span></div>`).join("");
+  const add = (fix.new || "").split("\n").map(l => `<div class="r add"><span class="no">+</span><span>${esc(l)}</span></div>`).join("");
+  const proven = f.status === "PROVEN";
+  $("#finding").innerHTML = `
+    <div class="fhead"><span class="badge${proven ? "" : " un"}">${proven ? "✓ PROVEN" : "▲ " + esc(f.status)}</span><span class="cls">${esc(f.bug_class)}</span><span class="loc">cell ${ci} · line ${bad} · audited by Muse Spark in ${Math.round(report.seconds || 0)} s</span></div>
+    <p class="expl">${esc(f.explanation)}</p>
+    <div class="code">${code}</div>
+    <div class="code diff">${del}${add}</div>
+    ${proven ? `<div class="proof">
+      <div><div class="l">generated test · original code</div><div class="v f">✕ fails</div></div>
+      <div><div class="l">generated test · with the fix</div><div class="v p">✓ passes</div></div>
+      <div><div class="l">generated test · clean control</div><div class="v p">✓ passes</div></div>
+    </div>` : `<p class="expl" style="margin-top:14px">${esc(f.reason || "")}</p>`}`;
+}
+$("#nbtabs").innerHTML = names.map(n => `<button data-n="${n}">${n}.ipynb</button>`).join("");
+document.querySelectorAll("#nbtabs button").forEach(b => b.addEventListener("click", () => showNb(b.dataset.n)));
+showNb(names[0]);
+
+/* ---------------- reveal on scroll ---------------- */
+const once = new Map([["#trialPanel", () => { trialChart(true); costChart(true); }], ["#term", playTerm], ["#ladder", () => ladder(true)], ["#wf", () => wf(true)], ["#eq", () => eq(true)]]);
+trialChart(false); costChart(false); ladder(false); wf(false); eq(false); bindHover();
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add("in");
+  for (const [sel, fn] of once) if (e.target.matches(sel) || e.target.querySelector(sel)) { once.delete(sel); fn(); }
+  io.unobserve(e.target);
+}), {threshold: 0.25});
+document.querySelectorAll(".reveal").forEach(n => io.observe(n));
+$("#replay").addEventListener("click", () => { trialChart(true); costChart(true); });
+countUp();
+})();
+</script>
+</body>
+</html>

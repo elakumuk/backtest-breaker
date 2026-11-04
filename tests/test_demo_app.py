@@ -88,11 +88,20 @@ for f in [{{}}, {{'status': 'DUPLICATE', 'cell_index': 0, 'line': 2}}, {{'status
     assert not at.exception
 
 
-@pytest.mark.parametrize("tab", [0, 1, 2])
-def test_app_renders_each_tab_in_demo_mode(tab, no_network):
+def test_showcase_page_inlines_live_numbers(no_network):
+    """The embedded page carries the MANIFEST numbers and needs no data.js request."""
+    import json
+    import re
+    from showcase import site_html
+    page = site_html()
+    assert '<script src="data.js">' not in page
+    payload = json.loads(re.search(r"window.BB_DATA = (.*?);</script>", page, re.S).group(1))
+    assert payload["manifest"] == dd.manifest()
+    assert len(payload["trials"]) == dd.manifest()["n_trials"]
+    assert "does not give investment advice" in page
+
+
+def test_app_runs_in_demo_mode(no_network):
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(ROOT / "app" / "streamlit_app.py"), default_timeout=60).run()
     assert not at.exception
-    assert len(at.tabs) == 3
-    assert at.tabs[tab].children
-    assert any("does not give investment advice" in md.value for md in at.markdown)

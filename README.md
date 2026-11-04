@@ -72,10 +72,15 @@ The gap between "found" and "PROVEN" is deliberate. We would rather leave a real
 
 ## Quick start
 
+**Showcase page:** https://elakumuk.github.io/backtest-breaker/ (GitHub Pages, served from `docs/`; the page reads the saved live run, makes no model calls).
+
+![Backtest Breaker](demo/screens/01_hero.png)
+
 ```bash
 git clone https://github.com/elakumuk/backtest-breaker && cd backtest-breaker
 pip install -r requirements.txt
-streamlit run app/streamlit_app.py     # Demo replay: saved live runs, no network, no API key
+streamlit run app/streamlit_app.py     # Demo replay (default): the showcase page, offline; Live mode: audit your own notebook
+python scripts/build_site.py           # rebuild docs/data.js from demo/
 pytest
 ```
 
