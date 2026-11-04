@@ -95,4 +95,4 @@ def test_app_renders_each_tab_in_demo_mode(tab, no_network):
     assert not at.exception
     assert len(at.tabs) == 3
     assert at.tabs[tab].children
-    assert any("does not give investment advice" in c.value for c in at.caption)
+    assert any("does not give investment advice" in md.value for md in at.markdown)
